@@ -1,5 +1,5 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:disp_moveis_suf/services/DatabaseService.dart';
+import 'package:disp_moveis_suf/services/api_service.dart';
 import 'package:flutter/material.dart';
 import 'widgets/Menu.dart';
 import 'views/MaquinaScreen.dart';
@@ -42,9 +42,10 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void initConnectivityListener() {
+    ApiService api = ApiService();
     Connectivity().onConnectivityChanged.listen((result) {
       if (result != ConnectivityResult.none) {
-        DatabaseService().syncAllResources();
+        api.syncAllResources();
       }
     });
   }

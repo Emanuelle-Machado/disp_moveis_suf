@@ -1,3 +1,4 @@
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:disp_moveis_suf/models/Maquina.dart';
 import 'package:disp_moveis_suf/models/Marca.dart';
 import 'package:disp_moveis_suf/models/Tipo.dart';
@@ -6,9 +7,124 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
 
+import 'package:sqflite/sqflite.dart';
+
 // Serviço API
 class ApiService {
   static const String baseUrl = 'https://argo.td.ufpr.edu.br/maquinas/ws';
+  static Database? _database;
+
+  Future<Database> get database async {
+    if (_database != null) return _database!;
+    _database = await LocalDatabaseService.instance.database;
+    return _database!;
+  }
+
+  Future<bool> isOnline() async {
+    final connectivityResult = await Connectivity().checkConnectivity();
+    if (connectivityResult == ConnectivityResult.none) return false;
+    try {
+      final response = await http
+          .get(Uri.parse('$baseUrl/tipo'))
+          .timeout(Duration(seconds: 5));
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> syncWithServer() async {
+    if (!(await isOnline())) return;
+
+    final db = await database;
+    final queue = await db.query('sync_queue');
+    if (queue.isEmpty) return;
+
+    final syncFutures = queue.map((item) async {
+      try {
+        final resource = item['resource'] as String;
+        final action = item['action'] as String;
+        final data = jsonDecode(item['data'] as String);
+        final localId = data['localId'];
+        final payload =
+            Map<String, dynamic>.from(data)
+              ..remove('localId')
+              ..remove('syncStatus');
+        final url =
+            action == 'update'
+                ? '$baseUrl/$resource/${data['id']}'
+                : '$baseUrl/$resource';
+
+        http.Response response;
+        if (action == 'create') {
+          response = await http.post(
+            Uri.parse(url),
+            body: jsonEncode(payload),
+            headers: {'Content-Type': 'application/json'},
+          );
+        } else {
+          response = await http.put(
+            Uri.parse(url),
+            body: jsonEncode(payload),
+            headers: {'Content-Type': 'application/json'},
+          );
+        }
+
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          final serverData = jsonDecode(response.body);
+          await db.transaction((txn) async {
+            await txn.update(
+              resource,
+              {...serverData, 'syncStatus': 'synced'},
+              where: 'id = ?',
+              whereArgs: [localId],
+            );
+            await txn.delete(
+              'sync_queue',
+              where: 'id = ?',
+              whereArgs: [item['id']],
+            );
+          });
+          return true;
+        }
+        return false;
+      } catch (e) {
+        print('Erro ao sincronizar: $e');
+        return false;
+      }
+    });
+
+    await Future.wait(syncFutures);
+  }
+
+  Future<dynamic> getById(String resource, int id) async {
+    final db = await database;
+    final result = await db.query(resource, where: 'id = ?', whereArgs: [id]);
+    if (result.isEmpty) return null;
+    if (resource == 'tipos') return Tipo.fromJson(result.first);
+    if (resource == 'marcas') return Marca.fromJson(result.first);
+    return Maquina.fromJson(result.first);
+  }
+
+  Future<void> fetchFromServer(String resource) async {
+    if (!(await isOnline())) return;
+
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/$resource'));
+      if (response.statusCode == 200) {
+        final db = await database;
+        final data = jsonDecode(response.body) as List;
+        await db.transaction((txn) async {
+          await txn.delete(resource);
+          for (var item in data) {
+            await txn.insert(resource, {...item, 'syncStatus': 'synced'});
+          }
+        });
+      }
+    } catch (e) {
+      print('Erro ao buscar $resource do servidor: $e');
+    }
+  }
 
   Future<void> syncData() async {
     // Exemplo genérico: adapte para seu banco local e lógica de sincronização
@@ -160,4 +276,10 @@ class ApiService {
   Future<void> updateMaquina(Maquina maquina, int id) =>
       _put('maquina', id, maquina.toJson());
   Future<void> deleteMaquina(int id) => _delete('maquina', id);
+
+  Future<void> syncAllResources() async {
+    final resources = ['tipos', 'marcas', 'maquinas'];
+    await Future.wait(resources.map((resource) => fetchFromServer(resource)));
+    await syncWithServer();
+  }
 }

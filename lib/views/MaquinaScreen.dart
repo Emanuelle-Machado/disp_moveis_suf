@@ -1,5 +1,5 @@
 import 'package:disp_moveis_suf/models/Maquina.dart';
-import 'package:disp_moveis_suf/services/DatabaseService.dart';
+import 'package:disp_moveis_suf/services/api_service.dart';
 import 'package:flutter/material.dart';
 
 class MaquinaScreen extends StatefulWidget {
@@ -11,6 +11,7 @@ class MaquinaScreen extends StatefulWidget {
 
 class _MaquinaScreenState extends State<MaquinaScreen> {
   final List<Maquina> _maquinas = [];
+  final ApiService api = ApiService();
 
   @override
   void initState() {
@@ -20,7 +21,7 @@ class _MaquinaScreenState extends State<MaquinaScreen> {
 
   Future<void> _fetchMaquinas() async {
     // Substitua pelo seu DatabaseService real
-    final maquinas = await DatabaseService().getAll('maquinas');
+    final maquinas = await api.getMaquinas();
     setState(() {
       _maquinas.clear();
       _maquinas.addAll(maquinas.cast<Maquina>());
