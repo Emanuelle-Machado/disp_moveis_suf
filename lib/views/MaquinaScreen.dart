@@ -72,14 +72,122 @@ class _MaquinaScreenState extends State<MaquinaScreen> {
             ),
             content: Form(
               key: _formKey,
-              child: TextFormField(
-                controller: _descricaoController,
-                decoration: const InputDecoration(labelText: 'Descrição'),
-                validator:
-                    (value) =>
-                        value == null || value.trim().isEmpty
-                            ? 'Informe a descrição'
-                            : null,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: _descricaoController,
+                    decoration: const InputDecoration(labelText: 'Descrição'),
+                    validator:
+                        (value) =>
+                            value == null || value.trim().isEmpty
+                                ? 'Informe a descrição'
+                                : null,
+                  ),
+                  TextFormField(
+                    controller: _idTipoController,
+                    decoration: const InputDecoration(labelText: 'ID Tipo'),
+                    validator:
+                        (value) =>
+                            value == null || value.trim().isEmpty
+                                ? 'Informe o ID Tipo'
+                                : null,
+                  ),
+                  TextFormField(
+                    controller: _idMarcaController,
+                    decoration: const InputDecoration(labelText: 'ID Marca'),
+                    validator:
+                        (value) =>
+                            value == null || value.trim().isEmpty
+                                ? 'Informe o ID Marca'
+                                : null,
+                  ),
+                  TextFormField(
+                    controller: _valorController,
+                    decoration: const InputDecoration(labelText: 'Valor'),
+                    keyboardType: TextInputType.number,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Informe o valor';
+                      }
+                      final parsedValue = double.tryParse(value);
+                      if (parsedValue == null) {
+                        return 'Valor inválido';
+                      }
+                      return null;
+                    },
+                  ),
+                  TextFormField(
+                    controller: _nomeProprietarioController,
+                    decoration: const InputDecoration(
+                      labelText: 'Nome Proprietário',
+                    ),
+                    validator:
+                        (value) =>
+                            value == null || value.trim().isEmpty
+                                ? 'Informe o nome do proprietário'
+                                : null,
+                  ),
+                  TextFormField(
+                    controller: _contatoProprietarioController,
+                    decoration: const InputDecoration(
+                      labelText: 'Contato Proprietário',
+                    ),
+                    validator:
+                        (value) =>
+                            value == null || value.trim().isEmpty
+                                ? 'Informe o contato do proprietário'
+                                : null,
+                  ),
+                  TextFormField(
+                    controller: _dataFabricacaoController,
+                    decoration: const InputDecoration(
+                      labelText: 'Data Fabricação',
+                    ),
+                    validator:
+                        (value) =>
+                            value == null || value.trim().isEmpty
+                                ? 'Informe a data de fabricação'
+                                : null,
+                  ),
+                  TextFormField(
+                    controller: _dataInclusaoController,
+                    decoration: const InputDecoration(
+                      labelText: 'Data Inclusão',
+                    ),
+                    validator:
+                        (value) =>
+                            value == null || value.trim().isEmpty
+                                ? 'Informe a data de inclusão'
+                                : null,
+                  ),
+                  TextFormField(
+                    controller: _percentualComissaoController,
+                    decoration: const InputDecoration(
+                      labelText: 'Percentual Comissão',
+                    ),
+                    keyboardType: TextInputType.number,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Informe o percentual de comissão';
+                      }
+                      final parsedValue = double.tryParse(value);
+                      if (parsedValue == null) {
+                        return 'Percentual inválido';
+                      }
+                      return null;
+                    },
+                  ),
+                  TextFormField(
+                    controller: _statusController,
+                    decoration: const InputDecoration(labelText: 'Status'),
+                    validator:
+                        (value) =>
+                            value == null || value.trim().isEmpty
+                                ? 'Informe o status'
+                                : null,
+                  ),
+                ],
               ),
             ),
             actions: [
@@ -87,6 +195,15 @@ class _MaquinaScreenState extends State<MaquinaScreen> {
                 onPressed: () {
                   Navigator.of(context).pop();
                   _descricaoController.clear();
+                  _idTipoController.clear();
+                  _idMarcaController.clear();
+                  _valorController.clear();
+                  _nomeProprietarioController.clear();
+                  _contatoProprietarioController.clear();
+                  _dataFabricacaoController.clear();
+                  _dataInclusaoController.clear();
+                  _percentualComissaoController.clear();
+                  _statusController.clear();
                 },
                 child: const Text('Cancelar'),
               ),
@@ -101,20 +218,32 @@ class _MaquinaScreenState extends State<MaquinaScreen> {
                         _maquinas.add(
                           Maquina(
                             id: DateTime.now().millisecondsSinceEpoch,
-                            idTipo: '0', // TODO: Replace with actual idTipo
-                            idMarca: '0', // TODO: Replace with actual idMarca
+                            idTipo: _idTipoController.text.trim(),
+                            idMarca: _idMarcaController.text.trim(),
                             descricao: _descricaoController.text.trim(),
-                            valor: 0.0, // TODO: Replace with actual valor
+                            valor:
+                                double.tryParse(_valorController.text.trim()) ??
+                                0.0,
                             nomeProprietario:
-                                '', // TODO: Replace with actual nomeProprietario
+                                _nomeProprietarioController.text.trim(),
                             contatoProprietario:
-                                '', // TODO: Replace with actual contatoProprietario
+                                _contatoProprietarioController.text.trim(),
                             dataFabricacao:
-                                DateTime.now(), // TODO: Replace with actual dataFabricacao
-                            dataInclusao: DateTime.now(),
+                                DateTime.tryParse(
+                                  _dataFabricacaoController.text.trim(),
+                                ) ??
+                                DateTime.now(),
+                            dataInclusao:
+                                DateTime.tryParse(
+                                  _dataInclusaoController.text.trim(),
+                                ) ??
+                                DateTime.now(),
                             percentualComissao:
-                                0.0, // TODO: Replace with actual percentualComissao
-                            status: '', // TODO: Replace with actual status
+                                double.tryParse(
+                                  _percentualComissaoController.text.trim(),
+                                ) ??
+                                0.0,
+                            status: _statusController.text.trim(),
                           ),
                         );
                       }
@@ -164,20 +293,44 @@ class _MaquinaScreenState extends State<MaquinaScreen> {
       itemCount: _maquinas.length,
       itemBuilder: (context, index) {
         final maquina = _maquinas[index];
-        return ListTile(
-          title: Text(maquina.descricao),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.edit),
-                onPressed: () => _showForm(maquina),
-              ),
-              IconButton(
-                icon: const Icon(Icons.delete),
-                onPressed: () => _confirmRemove(maquina),
-              ),
-            ],
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          child: ListTile(
+            title: Text(maquina.descricao),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('ID Tipo: ${maquina.idTipo}'),
+                Text('ID Marca: ${maquina.idMarca}'),
+                Text('Valor: R\$ ${maquina.valor.toStringAsFixed(2)}'),
+                Text('Nome Proprietário: ${maquina.nomeProprietario}'),
+                Text('Contato Proprietário: ${maquina.contatoProprietario}'),
+                Text(
+                  'Data Fabricação: ${maquina.dataFabricacao.toString().split(' ').first}',
+                ),
+                Text(
+                  'Data Inclusão: ${maquina.dataInclusao.toString().split(' ').first}',
+                ),
+                Text(
+                  'Percentual Comissão: ${maquina.percentualComissao.toStringAsFixed(2)}%',
+                ),
+                Text('Status: ${maquina.status}'),
+              ],
+            ),
+            isThreeLine: true,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.edit),
+                  onPressed: () => _showForm(maquina),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete),
+                  onPressed: () => _confirmRemove(maquina),
+                ),
+              ],
+            ),
           ),
         );
       },
