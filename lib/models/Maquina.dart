@@ -45,19 +45,25 @@ class Maquina {
   }
 
   factory Maquina.fromMap(Map<String, dynamic> map) {
+    if (map['id'] == null ||
+        map['idMarca'] == null ||
+        map['idTipo'] == null ||
+        map['anoFabricacao'] == null) {
+      throw Exception('Dados inválidos para Maquina: id, idMarca, idTipo ou anoFabricacao nulos');
+    }
     return Maquina(
-      id: map['id'],
-      idMarca: map['idMarca'],
-      idTipo: map['idTipo'],
-      anoFabricacao: map['anoFabricacao'],
-      contatoProprietario: map['contatoProprietario'],
-      dataInclusao: map['dataInclusao'],
-      descricao: map['descricao'],
-      nomeProprietario: map['nomeProprietario'],
-      percentualComissao: map['percentualComissao'].toDouble(),
-      status: map['status'],
-      valor: map['valor'].toDouble(),
-      isSincronizado: map['isSincronizado'] == 1,
+      id: map['id'] as int,
+      idMarca: map['idMarca'] as int,
+      idTipo: map['idTipo'] as int,
+      anoFabricacao: map['anoFabricacao'] as int,
+      contatoProprietario: map['contatoProprietario'] as String? ?? '',
+      dataInclusao: map['dataInclusao'] as String? ?? '',
+      descricao: map['descricao'] as String? ?? '',
+      nomeProprietario: map['nomeProprietario'] as String? ?? '',
+      percentualComissao: (map['percentualComissao'] as num?)?.toDouble() ?? 0.0,
+      status: map['status'] as String? ?? 'D',
+      valor: (map['valor'] as num?)?.toDouble() ?? 0.0,
+      isSincronizado: (map['isSincronizado'] as int?) == 1,
     );
   }
 

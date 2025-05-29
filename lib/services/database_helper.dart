@@ -2,6 +2,7 @@ import 'package:disp_moveis_suf/models/Maquina.dart';
 import 'package:disp_moveis_suf/models/Marca.dart';
 import 'package:disp_moveis_suf/models/OperacaoSincronizacao.dart';
 import 'package:disp_moveis_suf/models/Tipo.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'dart:convert';
@@ -9,7 +10,7 @@ import 'dart:convert';
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
-  static const int _version = 2; // Incrementado para migração
+  static const int _version = 2;
 
   DatabaseHelper._init();
 
@@ -72,7 +73,6 @@ class DatabaseHelper {
 
   Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
-      // Adiciona a coluna isSincronizado se não existir
       await db.execute('ALTER TABLE maquinas ADD COLUMN isSincronizado INTEGER NOT NULL DEFAULT 0');
     }
   }
@@ -89,6 +89,37 @@ class DatabaseHelper {
     return count == 0;
   }
 
+  Future<void> debugFilaSincronizacao() async {
+    final db = await database;
+    final maps = await db.query('fila_sincronizacao');
+    debugPrint('Conteúdo da fila_sincronizacao: $maps');
+  }
+
+  Future<void> limparFilaSincronizacaoCompleta() async {
+    final db = await database;
+    await db.delete('fila_sincronizacao');
+    debugPrint('Fila de sincronização limpa');
+  }
+
+  Future<void> limparRegistrosNaoSincronizados() async {
+    final db = await database;
+    await db.delete('tipos');
+    await db.delete('marcas');
+    await db.delete('maquinas', where: 'isSincronizado = ?', whereArgs: [0]);
+    debugPrint('Registros não sincronizados limpos');
+  }
+
+  Future<void> marcarMaquinaComoSincronizada(int id) async {
+    final db = await database;
+    await db.update(
+      'maquinas',
+      {'isSincronizado': 1},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    debugPrint('Máquina ID: $id marcada como sincronizada');
+  }
+
   // Tipos
   Future<void> inserirTipo(Tipo tipo) async {
     final db = await database;
@@ -99,6 +130,7 @@ class DatabaseHelper {
       'operacao': 'inserir',
       'dados': jsonEncode(tipo.toApiMap()),
     });
+    await debugFilaSincronizacao();
   }
 
   Future<void> atualizarTipo(Tipo tipo) async {
@@ -110,6 +142,7 @@ class DatabaseHelper {
       'operacao': 'atualizar',
       'dados': jsonEncode(tipo.toApiMap()),
     });
+    await debugFilaSincronizacao();
   }
 
   Future<void> excluirTipo(int id) async {
@@ -124,6 +157,7 @@ class DatabaseHelper {
       'operacao': 'excluir',
       'dados': '{}',
     });
+    await debugFilaSincronizacao();
   }
 
   Future<List<Tipo>> obterTipos() async {
@@ -142,6 +176,7 @@ class DatabaseHelper {
       'operacao': 'inserir',
       'dados': jsonEncode(marca.toApiMap()),
     });
+    await debugFilaSincronizacao();
   }
 
   Future<void> atualizarMarca(Marca marca) async {
@@ -153,6 +188,7 @@ class DatabaseHelper {
       'operacao': 'atualizar',
       'dados': jsonEncode(marca.toApiMap()),
     });
+    await debugFilaSincronizacao();
   }
 
   Future<void> excluirMarca(int id) async {
@@ -167,6 +203,7 @@ class DatabaseHelper {
       'operacao': 'excluir',
       'dados': '{}',
     });
+    await debugFilaSincronizacao();
   }
 
   Future<List<Marca>> obterMarcas() async {
@@ -185,6 +222,7 @@ class DatabaseHelper {
       'operacao': 'inserir',
       'dados': jsonEncode(maquina.toApiMap()),
     });
+    await debugFilaSincronizacao();
   }
 
   Future<void> atualizarMaquina(Maquina maquina) async {
@@ -196,6 +234,7 @@ class DatabaseHelper {
       'operacao': 'atualizar',
       'dados': jsonEncode(maquina.toApiMap()),
     });
+    await debugFilaSincronizacao();
   }
 
   Future<void> excluirMaquina(int id) async {
@@ -207,6 +246,7 @@ class DatabaseHelper {
       'operacao': 'excluir',
       'dados': '{}',
     });
+    await debugFilaSincronizacao();
   }
 
   Future<List<Maquina>> obterMaquinas() async {

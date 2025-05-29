@@ -10,13 +10,15 @@ import 'package:disp_moveis_suf/views/tipo_list_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:uuid/uuid.dart';
+import 'package:http/http.dart' as http;
 
 void main() {
-  runApp(const MyApp());
+  runApp(const MaquinaApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MaquinaApp extends StatelessWidget {
+  const MaquinaApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -66,11 +68,12 @@ class _MaquinaListScreenState extends State<MaquinaListScreen> {
   }
 
   Future<void> _sincronizarDados() async {
-    await syncService.sincronizarDados();
+    await dbHelper.debugFilaSincronizacao();
+    final resultado = await syncService.sincronizarDados();
     await _carregarDados();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sincronização concluída')),
+        SnackBar(content: Text(resultado)),
       );
     }
   }
@@ -83,19 +86,51 @@ class _MaquinaListScreenState extends State<MaquinaListScreen> {
       return;
     }
     try {
+      // Teste de conexão
+      final testResponse = await http.get(Uri.parse('https://jsonplaceholder.typicode.com/posts/1'));
+      debugPrint('Teste de conexão: ${testResponse.statusCode}');
+
+      // Buscar dados da API
       final tiposApi = await networkService.buscarTipos();
       final marcasApi = await networkService.buscarMarcas();
       final maquinasApi = await networkService.buscarMaquinas();
+
+      // Obter dados locais existentes
+      final tiposLocais = await dbHelper.obterTipos();
+      final marcasLocais = await dbHelper.obterMarcas();
+      final maquinasLocais = await dbHelper.obterMaquinas();
+
       final db = await dbHelper.database;
       await db.transaction((txn) async {
+        // Processar tipos
         for (var tipo in tiposApi) {
-          await txn.insert('tipos', tipo.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+          final existe = tiposLocais.any((t) => t.id == tipo.id);
+          if (!existe) {
+            debugPrint('Inserindo tipo ID: ${tipo.id}');
+            await txn.insert('tipos', tipo.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+          } else {
+            debugPrint('Tipo ID: ${tipo.id} já existe, pulando');
+          }
         }
+        // Processar marcas
         for (var marca in marcasApi) {
-          await txn.insert('marcas', marca.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+          final existe = marcasLocais.any((m) => m.id == marca.id);
+          if (!existe) {
+            debugPrint('Inserindo marca ID: ${marca.id}');
+            await txn.insert('marcas', marca.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+          } else {
+            debugPrint('Marca ID: ${marca.id} já existe, pulando');
+          }
         }
+        // Processar máquinas
         for (var maquina in maquinasApi) {
-          await txn.insert('maquinas', maquina.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+          final existe = maquinasLocais.any((m) => m.id == maquina.id && m.isSincronizado);
+          if (!existe) {
+            debugPrint('Inserindo máquina ID: ${maquina.id}');
+            await txn.insert('maquinas', maquina.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+          } else {
+            debugPrint('Máquina ID: ${maquina.id} já sincronizada, pulando');
+          }
         }
       });
       await _carregarDados();
@@ -105,9 +140,14 @@ class _MaquinaListScreenState extends State<MaquinaListScreen> {
         );
       }
     } catch (e) {
+      debugPrint('Erro ao buscar dados: $e');
       if (mounted) {
+        String mensagem = 'Erro ao buscar dados: $e';
+        if (mensagem.contains('Erro de resolução de DNS')) {
+          mensagem = 'Falha ao conectar ao servidor. Verifique sua conexão ou tente novamente mais tarde.';
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao buscar dados: $e')),
+          SnackBar(content: Text(mensagem)),
         );
       }
     }

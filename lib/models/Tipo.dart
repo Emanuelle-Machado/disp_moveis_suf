@@ -9,13 +9,16 @@ class Tipo {
   }
 
   factory Tipo.fromMap(Map<String, dynamic> map) {
+    if (map['id'] == null || map['descricao'] == null) {
+      throw Exception('Dados inválidos para Tipo: id ou descricao nulos');
+    }
     return Tipo(
-      id: map['id'],
-      descricao: map['descricao'],
+      id: map['id'] as int,
+      descricao: map['descricao'] as String,
     );
   }
 
   Map<String, dynamic> toApiMap() {
-    return {'descricao': descricao}; // Não envia ID no POST
+    return {'descricao': descricao};
   }
 }

@@ -1,9 +1,9 @@
 class OperacaoSincronizacao {
   final int? id;
-  final String recurso; // 'tipo', 'marca', 'maquina'
+  final String recurso;
   final int recursoId;
-  final String operacao; // 'inserir', 'atualizar', 'excluir'
-  final String dados; // JSON dos dados
+  final String operacao;
+  final String dados;
 
   OperacaoSincronizacao({
     this.id,
@@ -25,11 +25,11 @@ class OperacaoSincronizacao {
 
   factory OperacaoSincronizacao.fromMap(Map<String, dynamic> map) {
     return OperacaoSincronizacao(
-      id: map['id'],
-      recurso: map['recurso'],
-      recursoId: map['recursoId'],
-      operacao: map['operacao'],
-      dados: map['dados'],
+      id: map['id'] as int?,
+      recurso: map['recurso'] as String,
+      recursoId: map['recursoId'] as int,
+      operacao: map['operacao'] as String,
+      dados: map['dados'] as String,
     );
   }
 }
