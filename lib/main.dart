@@ -72,8 +72,18 @@ class _MaquinaListScreenState extends State<MaquinaListScreen> {
     final resultado = await syncService.sincronizarDados();
     await _carregarDados();
     if (mounted) {
+      final isError = resultado.contains('falha(s)');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(resultado)),
+        SnackBar(
+          content: Text(
+            resultado,
+            style: TextStyle(color: Colors.white),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+          backgroundColor: isError ? Colors.red : Colors.green,
+          duration: Duration(seconds: isError ? 5 : 3),
+        ),
       );
     }
   }
@@ -86,23 +96,19 @@ class _MaquinaListScreenState extends State<MaquinaListScreen> {
       return;
     }
     try {
-      // Teste de conexão
       final testResponse = await http.get(Uri.parse('https://jsonplaceholder.typicode.com/posts/1'));
       debugPrint('Teste de conexão: ${testResponse.statusCode}');
 
-      // Buscar dados da API
       final tiposApi = await networkService.buscarTipos();
       final marcasApi = await networkService.buscarMarcas();
       final maquinasApi = await networkService.buscarMaquinas();
 
-      // Obter dados locais existentes
       final tiposLocais = await dbHelper.obterTipos();
       final marcasLocais = await dbHelper.obterMarcas();
       final maquinasLocais = await dbHelper.obterMaquinas();
 
       final db = await dbHelper.database;
       await db.transaction((txn) async {
-        // Processar tipos
         for (var tipo in tiposApi) {
           final existe = tiposLocais.any((t) => t.id == tipo.id);
           if (!existe) {
@@ -112,7 +118,6 @@ class _MaquinaListScreenState extends State<MaquinaListScreen> {
             debugPrint('Tipo ID: ${tipo.id} já existe, pulando');
           }
         }
-        // Processar marcas
         for (var marca in marcasApi) {
           final existe = marcasLocais.any((m) => m.id == marca.id);
           if (!existe) {
@@ -122,7 +127,6 @@ class _MaquinaListScreenState extends State<MaquinaListScreen> {
             debugPrint('Marca ID: ${marca.id} já existe, pulando');
           }
         }
-        // Processar máquinas
         for (var maquina in maquinasApi) {
           final existePorId = maquinasLocais.any((m) => m.id == maquina.id && m.isSincronizado);
           final existePorDados = maquinasLocais.any((m) =>
@@ -148,9 +152,9 @@ class _MaquinaListScreenState extends State<MaquinaListScreen> {
     } catch (e) {
       debugPrint('Erro ao buscar dados: $e');
       if (mounted) {
-        String mensagem = 'Erro ao buscar dados: $e';
-        if (mensagem.contains('Erro de resolução de DNS')) {
-          mensagem = 'Falha ao conectar ao servidor. Verifique sua conexão ou tente novamente mais tarde.';
+        String mensagem = 'Erro ao buscar dados';
+        if (e.toString().contains('Erro de resolução de DNS')) {
+          mensagem = 'Falha ao conectar ao servidor. Verifique sua conexão.';
         }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(mensagem)),

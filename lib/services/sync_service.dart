@@ -51,11 +51,20 @@ class SyncService {
         await dbHelper.limparFilaSincronizacao(op.id!);
         sucessos++;
       } catch (e) {
-        erros.add('Erro em ${op.recurso} ${op.operacao} ID: ${op.recursoId}: $e');
+        String erro = 'Erro ao ${op.operacao} ${op.recurso} ID: ${op.recursoId}';
+        if (e.toString().contains('Falha ao')) {
+          erro += ': Servidor retornou erro';
+        } else {
+          erro += ': $e';
+        }
+        erros.add(erro);
         falhas++;
       }
     }
-    String mensagem = 'Sincronização concluída: $sucessos operação(ões) bem-sucedida(s), $falhas falha(s)';
+    String mensagem = 'Sincronização concluída: $sucessos operação(ões) bem-sucedida(s)';
+    if (falhas > 0) {
+      mensagem += ', $falhas falha(s)';
+    }
     if (erros.isNotEmpty) {
       mensagem += '\nErros: ${erros.join('; ')}';
     }
@@ -125,7 +134,6 @@ class SyncService {
       case 'inserir':
         final serverId = await networkService.criarMaquina(maquina);
         if (serverId != null && serverId != op.recursoId) {
-          // Atualizar ID local com o ID do servidor
           final db = await dbHelper.database;
           await db.update(
             'maquinas',
