@@ -63,36 +63,44 @@ class SyncService {
   }
 
   Future<void> _sincronizarTipo(OperacaoSincronizacao op) async {
-    final dados = jsonDecode(op.dados);
-    final tipo = Tipo(id: op.recursoId, descricao: dados['descricao']);
     debugPrint('Sincronizando tipo: ${op.operacao} ID: ${op.recursoId}');
-    switch (op.operacao) {
-      case 'inserir':
-        await networkService.criarTipo(tipo);
-        break;
-      case 'atualizar':
-        await networkService.atualizarTipo(tipo);
-        break;
-      case 'excluir':
-        await networkService.excluirTipo(op.recursoId);
-        break;
+    if (op.operacao == 'excluir') {
+      await networkService.excluirTipo(op.recursoId);
+    } else {
+      final dados = jsonDecode(op.dados);
+      final tipo = Tipo(
+        id: op.recursoId,
+        descricao: dados['descricao'] ?? '',
+      );
+      switch (op.operacao) {
+        case 'inserir':
+          await networkService.criarTipo(tipo);
+          break;
+        case 'atualizar':
+          await networkService.atualizarTipo(tipo);
+          break;
+      }
     }
   }
 
   Future<void> _sincronizarMarca(OperacaoSincronizacao op) async {
-    final dados = jsonDecode(op.dados);
-    final marca = Marca(id: op.recursoId, nome: dados['nome']);
     debugPrint('Sincronizando marca: ${op.operacao} ID: ${op.recursoId}');
-    switch (op.operacao) {
-      case 'inserir':
-        await networkService.criarMarca(marca);
-        break;
-      case 'atualizar':
-        await networkService.atualizarMarca(marca);
-        break;
-      case 'excluir':
-        await networkService.excluirMarca(op.recursoId);
-        break;
+    if (op.operacao == 'excluir') {
+      await networkService.excluirMarca(op.recursoId);
+    } else {
+      final dados = jsonDecode(op.dados);
+      final marca = Marca(
+        id: op.recursoId,
+        nome: dados['nome'] ?? '',
+      );
+      switch (op.operacao) {
+        case 'inserir':
+          await networkService.criarMarca(marca);
+          break;
+        case 'atualizar':
+          await networkService.atualizarMarca(marca);
+          break;
+      }
     }
   }
 
