@@ -32,7 +32,6 @@ class SyncService {
       return 'Nenhuma operação pendente';
     }
 
-    // Ordenar operações: tipos primeiro, depois marcas, depois máquinas
     operacoes.sort((a, b) {
       const ordem = {'tipo': 1, 'marca': 2, 'maquina': 3};
       return ordem[a.recurso]!.compareTo(ordem[b.recurso]!);
@@ -151,14 +150,12 @@ class SyncService {
       await networkService.excluirMaquina(op.recursoId);
     } else {
       final dados = jsonDecode(op.dados);
-      // Validar dados
       if (dados['idMarca'] == null || dados['idTipo'] == null) {
         throw Exception('Marca ou Tipo inválido');
       }
       if (!['D', 'N', 'R', 'V'].contains(dados['status'])) {
         throw Exception('Status inválido: ${dados['status']}');
       }
-      // Verificar se idMarca e idTipo existem no servidor
       try {
         final marcasApi = await networkService.buscarMarcas();
         final tiposApi = await networkService.buscarTipos();
@@ -187,27 +184,43 @@ class SyncService {
         status: dados['status'],
         valor: (dados['valor'] as num).toDouble(),
       );
-      switch (op.operacao) {
-        case 'inserir':
-          final serverId = await networkService.criarMaquina(maquina);
-          final finalId = serverId ?? op.recursoId;
-          if (serverId != null && serverId != op.recursoId) {
-            await _atualizarIdLocal('maquinas', op.recursoId, serverId);
-            debugPrint('Máquina ID local ${op.recursoId} atualizado para ID do servidor: $serverId');
-          }
-          await dbHelper.marcarMaquinaComoSincronizada(finalId);
-          debugPrint('Máquina ID $finalId marcada como sincronizada');
-          break;
-        case 'atualizar':
-          final serverId = await networkService.atualizarMaquina(maquina);
-          final finalId = serverId ?? op.recursoId;
-          if (serverId != null && serverId != op.recursoId) {
-            await _atualizarIdLocal('maquinas', op.recursoId, serverId);
-            debugPrint('Máquina ID local ${op.recursoId} atualizado para ID do servidor: $serverId');
-          }
-          await dbHelper.marcarMaquinaComoSincronizada(finalId);
-          debugPrint('Máquina ID $finalId marcada como sincronizada');
-          break;
+      // Verificar se a máquina já existe no servidor
+      bool existsOnServer = false;
+      try {
+        final maquinasApi = await networkService.buscarMaquinas(idMarca: maquina.idMarca, idTipo: maquina.idTipo);
+        existsOnServer = maquinasApi.any((m) => m.id == maquina.id);
+        debugPrint('Máquina ID ${maquina.id} existe no servidor: $existsOnServer');
+      } catch (e) {
+        debugPrint('Erro ao verificar existência da máquina no servidor: $e');
+      }
+      final finalId = maquina.id;
+      if (op.operacao == 'inserir' && existsOnServer) {
+        // Tratar como atualização se já existe no servidor
+        debugPrint('Máquina ID ${maquina.id} já existe no servidor, tratando como atualização');
+        await networkService.atualizarMaquina(maquina);
+        await dbHelper.marcarMaquinaComoSincronizada(finalId);
+        debugPrint('Máquina ID $finalId marcada como sincronizada (atualização)');
+      } else {
+        switch (op.operacao) {
+          case 'inserir':
+            final serverId = await networkService.criarMaquina(maquina);
+            if (serverId != null && serverId != op.recursoId) {
+              await _atualizarIdLocal('maquinas', op.recursoId, serverId);
+              debugPrint('Máquina ID local ${op.recursoId} atualizado para ID do servidor: $serverId');
+            }
+            await dbHelper.marcarMaquinaComoSincronizada(serverId ?? finalId);
+            debugPrint('Máquina ID ${serverId ?? finalId} marcada como sincronizada (inserção)');
+            break;
+          case 'atualizar':
+            final serverId = await networkService.atualizarMaquina(maquina);
+            if (serverId != null && serverId != op.recursoId) {
+              await _atualizarIdLocal('maquinas', op.recursoId, serverId);
+              debugPrint('Máquina ID local ${op.recursoId} atualizado para ID do servidor: $serverId');
+            }
+            await dbHelper.marcarMaquinaComoSincronizada(serverId ?? finalId);
+            debugPrint('Máquina ID ${serverId ?? finalId} marcada como sincronizada (atualização)');
+            break;
+        }
       }
     }
   }

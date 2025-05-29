@@ -7,11 +7,9 @@ import 'package:disp_moveis_suf/views/tipo_list_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:disp_moveis_suf/models/Maquina.dart';
-import 'package:disp_moveis_suf/models/Marca.dart';
-import 'package:disp_moveis_suf/models/OperacaoSincronizacao.dart';
-import 'package:disp_moveis_suf/models/Tipo.dart';
-import 'dart:convert';
 
+import 'package:disp_moveis_suf/models/Marca.dart';
+import 'package:disp_moveis_suf/models/Tipo.dart';
 import 'package:sqflite/sqflite.dart';
 
 void main() {
@@ -148,11 +146,23 @@ class _MaquinaListScreenState extends State<MaquinaListScreen> {
       final maquinasLocais = await dbHelper.obterMaquinas();
 
       debugPrint('Máquinas locais antes da sincronização: ${maquinasLocais.map((m) => {'id': m.id, 'isSincronizado': m.isSincronizado, 'descricao': m.descricao}).toList()}');
-      debugPrint('Máquinas da API: ${maquinasApi.map((m) => {'id': m.id, 'descricao': m.descricao}).toList()}');
+      debugPrint('Máquinas da API: ${maquinasApi.map((m) => {'id': m.id, 'descricao': m.descricao, 'dataInclusao': m.dataInclusao}).toList()}');
+
+      // Deduplicar máquinas da API, preferindo a mais recente por dataInclusao
+      final maquinasApiUnicas = <int, Maquina>{};
+      for (var maquina in maquinasApi) {
+        if (!maquinasApiUnicas.containsKey(maquina.id) ||
+            DateTime.parse(maquina.dataInclusao).isAfter(DateTime.parse(maquinasApiUnicas[maquina.id]!.dataInclusao))) {
+          maquinasApiUnicas[maquina.id] = maquina;
+        }
+      }
+      final maquinasApiDeduplicadas = maquinasApiUnicas.values.toList();
+
+      debugPrint('Máquinas da API após deduplicação: ${maquinasApiDeduplicadas.map((m) => {'id': m.id, 'descricao': m.descricao}).toList()}');
 
       final db = await dbHelper.database;
       await db.transaction((txn) async {
-        for (var maquina in maquinasApi) {
+        for (var maquina in maquinasApiDeduplicadas) {
           final existe = maquinasLocais.any((m) => m.id == maquina.id);
           if (!existe) {
             debugPrint('Inserindo máquina ID: ${maquina.id}, Descrição: ${maquina.descricao}');
