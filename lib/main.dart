@@ -5,24 +5,37 @@ import 'package:disp_moveis_suf/views/maquina_edit_screen.dart';
 import 'package:disp_moveis_suf/views/marca_list_screen.dart';
 import 'package:disp_moveis_suf/views/tipo_list_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:disp_moveis_suf/models/Maquina.dart';
-
 import 'package:disp_moveis_suf/models/Marca.dart';
 import 'package:disp_moveis_suf/models/Tipo.dart';
 import 'package:sqflite/sqflite.dart';
+
+import 'localizations/app_localizations.dart';
 
 void main() {
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+  const MyApp({super.key, this.initialLocale});
+
+  final Locale? initialLocale;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Gerenciador de Máquinas',
+      locale: initialLocale ?? const Locale('pt', 'BR'),
+      supportedLocales: const [
+        Locale('pt', 'BR'),
+        Locale('en', ''),
+      ],
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       theme: ThemeData(primarySwatch: Colors.blue),
       initialRoute: '/',
       routes: {
@@ -35,10 +48,10 @@ class MyApp extends StatelessWidget {
 }
 
 class MaquinaListScreen extends StatefulWidget {
-  const MaquinaListScreen({Key? key}) : super(key: key);
+  const MaquinaListScreen({super.key});
 
   @override
-  _MaquinaListScreenState createState() => _MaquinaListScreenState();
+  State<MaquinaListScreen> createState() => _MaquinaListScreenState();
 }
 
 class _MaquinaListScreenState extends State<MaquinaListScreen> {
@@ -48,6 +61,7 @@ class _MaquinaListScreenState extends State<MaquinaListScreen> {
   List<Maquina> maquinas = [];
   List<Tipo> tipos = [];
   List<Marca> marcas = [];
+  String _currentLocale = 'pt_BR';
 
   @override
   void initState() {
@@ -72,9 +86,9 @@ class _MaquinaListScreenState extends State<MaquinaListScreen> {
         await txn.delete('marcas');
         await txn.delete('fila_sincronizacao');
       });
-      debugPrint('Dados corrompidos limpos: maquinas, tipos, marcas e fila_sincronizacao');
+      debugPrint('Dados corrompidos limpos');
     } catch (e) {
-      debugPrint('Erro ao limpar dados corrompidos: $e');
+      debugPrint('Erro ao limpar dados: $e');
     }
   }
 
@@ -93,9 +107,9 @@ class _MaquinaListScreenState extends State<MaquinaListScreen> {
           await txn.insert('marcas', marca.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
         }
       });
-      debugPrint('Tipos (${tiposApi.length}) e marcas (${marcasApi.length}) sincronizados');
+      debugPrint('Tipos e marcas sincronizados');
     } catch (e) {
-      debugPrint('Erro ao sincronizar tipos e marcas: $e');
+      debugPrint('Erro ao sincronizar: $e');
     }
   }
 
@@ -115,17 +129,10 @@ class _MaquinaListScreenState extends State<MaquinaListScreen> {
     final resultado = await syncService.sincronizarDados();
     await _carregarDados();
     if (mounted) {
-      final isError = resultado.contains('falha');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            resultado,
-            style: const TextStyle(color: Colors.white),
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-          ),
-          backgroundColor: isError ? Colors.red : Colors.green,
-          duration: Duration(seconds: isError ? 5 : 3),
+          content: Text(AppLocalizations.of(context)!.dataUpdated),
+          backgroundColor: Colors.green,
         ),
       );
     }
@@ -135,7 +142,7 @@ class _MaquinaListScreenState extends State<MaquinaListScreen> {
     if (!await syncService.estaOnline()) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sem conexão com a internet')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.noInternet)),
         );
       }
       return;
@@ -145,10 +152,6 @@ class _MaquinaListScreenState extends State<MaquinaListScreen> {
       final maquinasApi = await networkService.buscarMaquinas();
       final maquinasLocais = await dbHelper.obterMaquinas();
 
-      debugPrint('Máquinas locais antes da sincronização: ${maquinasLocais.map((m) => {'id': m.id, 'isSincronizado': m.isSincronizado, 'descricao': m.descricao}).toList()}');
-      debugPrint('Máquinas da API: ${maquinasApi.map((m) => {'id': m.id, 'descricao': m.descricao, 'dataInclusao': m.dataInclusao}).toList()}');
-
-      // Deduplicar máquinas da API, preferindo a mais recente por dataInclusao
       final maquinasApiUnicas = <int, Maquina>{};
       for (var maquina in maquinasApi) {
         if (!maquinasApiUnicas.containsKey(maquina.id) ||
@@ -158,17 +161,13 @@ class _MaquinaListScreenState extends State<MaquinaListScreen> {
       }
       final maquinasApiDeduplicadas = maquinasApiUnicas.values.toList();
 
-      debugPrint('Máquinas da API após deduplicação: ${maquinasApiDeduplicadas.map((m) => {'id': m.id, 'descricao': m.descricao}).toList()}');
-
       final db = await dbHelper.database;
       await db.transaction((txn) async {
         for (var maquina in maquinasApiDeduplicadas) {
           final existe = maquinasLocais.any((m) => m.id == maquina.id);
           if (!existe) {
-            debugPrint('Inserindo máquina ID: ${maquina.id}, Descrição: ${maquina.descricao}');
             await txn.insert('maquinas', maquina.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
           } else {
-            debugPrint('Máquina ID: ${maquina.id} já existe localmente, atualizando');
             await txn.update(
               'maquinas',
               {...maquina.toMap(), 'isSincronizado': 1},
@@ -181,14 +180,13 @@ class _MaquinaListScreenState extends State<MaquinaListScreen> {
       await _carregarDados();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Dados da API atualizados')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.dataUpdated)),
         );
       }
     } catch (e) {
-      debugPrint('Erro ao buscar dados: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao buscar dados: $e')),
+          SnackBar(content: Text('Erro: $e')),
         );
       }
     }
@@ -199,21 +197,52 @@ class _MaquinaListScreenState extends State<MaquinaListScreen> {
     await _carregarDados();
   }
 
+  void _alterarIdioma(String idioma) {
+    setState(() {
+      _currentLocale = idioma;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => MyApp(
+            initialLocale: idioma == 'pt_BR' ? const Locale('pt', 'BR') : const Locale('en', ''),
+          ),
+        ),
+      );
+    });
+    debugPrint('Idioma alterado para: $idioma');
+  }
+
   @override
   Widget build(BuildContext context) {
+    debugPrint('Locale: ${Localizations.localeOf(context).toString()}');
+    debugPrint('App Title: ${AppLocalizations.of(context)!.appTitle}');
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Máquinas'),
+        title: Text(AppLocalizations.of(context)!.appTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.cloud_download),
             onPressed: _buscarDadosApi,
-            tooltip: 'Buscar Dados da API',
+            tooltip: AppLocalizations.of(context)!.dataUpdated,
           ),
           IconButton(
             icon: const Icon(Icons.sync),
             onPressed: _sincronizarDados,
-            tooltip: 'Sincronizar Dados',
+            tooltip: AppLocalizations.of(context)!.dataUpdated,
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.language),
+            onSelected: _alterarIdioma,
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'pt_BR',
+                child: Text('Português (BR)'),
+              ),
+              const PopupMenuItem(
+                value: 'en',
+                child: Text('English'),
+              ),
+            ],
           ),
         ],
       ),
@@ -221,21 +250,21 @@ class _MaquinaListScreenState extends State<MaquinaListScreen> {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            const DrawerHeader(
-              decoration: BoxDecoration(color: Colors.blue),
+            DrawerHeader(
+              decoration: const BoxDecoration(color: Colors.blue),
               child: Text(
-                'Menu',
-                style: TextStyle(color: Colors.white, fontSize: 24),
+                AppLocalizations.of(context)!.appTitle,
+                style: const TextStyle(color: Colors.white, fontSize: 24),
               ),
             ),
             ListTile(
               leading: const Icon(Icons.list),
-              title: const Text('Máquinas'),
+              title: Text(AppLocalizations.of(context)!.machines),
               onTap: () => Navigator.pop(context),
             ),
             ListTile(
               leading: const Icon(Icons.category),
-              title: const Text('Tipos'),
+              title: Text(AppLocalizations.of(context)!.types),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.pushNamed(context, '/tipos');
@@ -243,7 +272,7 @@ class _MaquinaListScreenState extends State<MaquinaListScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.branding_watermark),
-              title: const Text('Marcas'),
+              title: Text(AppLocalizations.of(context)!.brands),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.pushNamed(context, '/marcas');
@@ -256,8 +285,14 @@ class _MaquinaListScreenState extends State<MaquinaListScreen> {
         itemCount: maquinas.length,
         itemBuilder: (context, index) {
           final maquina = maquinas[index];
-          final tipo = tipos.firstWhere((t) => t.id == maquina.idTipo, orElse: () => Tipo(id: 0, descricao: 'Desconhecido'));
-          final marca = marcas.firstWhere((m) => m.id == maquina.idMarca, orElse: () => Marca(id: 0, nome: 'Desconhecida'));
+          final tipo = tipos.firstWhere(
+                (t) => t.id == maquina.idTipo,
+            orElse: () => Tipo(id: 0, descricao: AppLocalizations.of(context)!.description),
+          );
+          final marca = marcas.firstWhere(
+                (m) => m.id == maquina.idMarca,
+            orElse: () => Marca(id: 0, nome: AppLocalizations.of(context)!.description),
+          );
           return Card(
             margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
             child: ListTile(
@@ -267,9 +302,6 @@ class _MaquinaListScreenState extends State<MaquinaListScreen> {
                 children: [
                   Text('Marca: ${marca.nome}'),
                   Text('Tipo: ${tipo.descricao}'),
-                  Text('Valor: R\$${maquina.valor.toStringAsFixed(2)}'),
-                  Text('Status: ${maquina.status == 'D' ? 'Disponível' : maquina.status == 'N' ? 'Em Negociação' : maquina.status == 'R' ? 'Reservada' : 'Vendida'}'),
-                  if (!maquina.isSincronizado) const Text('Pendente de sincronização', style: TextStyle(color: Colors.red)),
                 ],
               ),
               onTap: () {
@@ -284,19 +316,19 @@ class _MaquinaListScreenState extends State<MaquinaListScreen> {
                 showDialog(
                   context: context,
                   builder: (context) => AlertDialog(
-                    title: const Text('Excluir Máquina'),
+                    title: Text(AppLocalizations.of(context)!.appTitle),
                     content: Text('Deseja excluir a máquina "${maquina.descricao}"?'),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancelar'),
+                        child: Text(AppLocalizations.of(context)!.cancel),
                       ),
                       TextButton(
                         onPressed: () {
                           _excluirMaquina(maquina.id);
                           Navigator.pop(context);
                         },
-                        child: const Text('Excluir'),
+                        child: Text(AppLocalizations.of(context)!.delete),
                       ),
                     ],
                   ),

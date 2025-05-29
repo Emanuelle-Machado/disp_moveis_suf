@@ -20,47 +20,6 @@ typedef String MessageIfAbsent(String messageStr, List<dynamic> args);
 class MessageLookup extends MessageLookupByLibrary {
   String get localeName => 'en';
 
-  static String m0(nome) => "Do you want to remove the brand \"${nome}\"?";
-
-  static String m1(descricao) =>
-      "Do you want to remove the type \"${descricao}\"?";
-
-  static String m2(descricao) =>
-      "Are you sure you want to remove \"${descricao}\"?";
-
   final messages = _notInlinedMessages(_notInlinedMessages);
-  static Map<String, Function> _notInlinedMessages(_) => <String, Function>{
-    "cadastrar": MessageLookupByLibrary.simpleMessage("Register"),
-    "cadastrarMaquina": MessageLookupByLibrary.simpleMessage(
-      "Register Machine",
-    ),
-    "cadastrarMarca": MessageLookupByLibrary.simpleMessage("Register Brand"),
-    "cancelar": MessageLookupByLibrary.simpleMessage("Cancel"),
-    "confirmarRemocao": MessageLookupByLibrary.simpleMessage("Confirm removal"),
-    "descricao": MessageLookupByLibrary.simpleMessage("Description"),
-    "desejaRemoverMarca": m0,
-    "desejaRemoverTipo": m1,
-    "editarMaquina": MessageLookupByLibrary.simpleMessage("Edit Machine"),
-    "editarMarca": MessageLookupByLibrary.simpleMessage("Edit Brand"),
-    "informeDescricao": MessageLookupByLibrary.simpleMessage(
-      "Enter the description",
-    ),
-    "informeNome": MessageLookupByLibrary.simpleMessage("Enter the name"),
-    "maquinas": MessageLookupByLibrary.simpleMessage("Machines"),
-    "marcas": MessageLookupByLibrary.simpleMessage("Brands"),
-    "nenhumaMarcaCadastrada": MessageLookupByLibrary.simpleMessage(
-      "No brands registered.",
-    ),
-    "nome": MessageLookupByLibrary.simpleMessage("Name"),
-    "novaMarca": MessageLookupByLibrary.simpleMessage("New Brand"),
-    "remover": MessageLookupByLibrary.simpleMessage("Remove"),
-    "removerMaquina": MessageLookupByLibrary.simpleMessage("Remove Machine"),
-    "removerMarca": MessageLookupByLibrary.simpleMessage("Remove Brand"),
-    "salvar": MessageLookupByLibrary.simpleMessage("Save"),
-    "temCertezaRemoverMaquina": m2,
-    "tipos": MessageLookupByLibrary.simpleMessage("Types"),
-    "tooltipCadastrarMaquina": MessageLookupByLibrary.simpleMessage(
-      "Register Machine",
-    ),
-  };
+  static Map<String, Function> _notInlinedMessages(_) => <String, Function>{};
 }
