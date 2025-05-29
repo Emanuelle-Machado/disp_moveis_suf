@@ -1,12 +1,12 @@
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:disp_moveis_suf/models/Maquina.dart';
 import 'package:disp_moveis_suf/models/Marca.dart';
 import 'package:disp_moveis_suf/models/OperacaoSincronizacao.dart';
 import 'package:disp_moveis_suf/models/Tipo.dart';
-import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'network_service.dart';
 import 'database_helper.dart';
-import 'dart:convert';
+import 'package:flutter/material.dart';
 
 class SyncService {
   final NetworkService networkService = NetworkService();
@@ -14,12 +14,9 @@ class SyncService {
 
   Future<bool> estaOnline() async {
     try {
-      var connectivityResult = await Connectivity().checkConnectivity();
-      bool online = connectivityResult != ConnectivityResult.none;
-      debugPrint('Conexão: ${online ? "Online" : "Offline"}');
-      return online;
+      final response = await http.get(Uri.parse('https://jsonplaceholder.typicode.com/posts/1')).timeout(const Duration(seconds: 5));
+      return response.statusCode == 200;
     } catch (e) {
-      debugPrint('Erro ao verificar conexão: $e');
       return false;
     }
   }
@@ -29,22 +26,17 @@ class SyncService {
       debugPrint('Sincronização cancelada: dispositivo offline');
       return 'Dispositivo offline';
     }
-
     final operacoes = await dbHelper.obterOperacoesPendentes();
     debugPrint('Operações pendentes: ${operacoes.length}');
     if (operacoes.isEmpty) {
-      debugPrint('Nenhuma operação pendente para sincronizar');
       return 'Nenhuma operação pendente';
     }
-
     int sucessos = 0;
     int falhas = 0;
     List<String> erros = [];
-
     for (var op in operacoes) {
       try {
         debugPrint('Processando operação: ${op.recurso} ${op.operacao} ID: ${op.recursoId}');
-        debugPrint('Dados da operação: ${op.dados}');
         switch (op.recurso) {
           case 'tipo':
             await _sincronizarTipo(op);
@@ -55,24 +47,14 @@ class SyncService {
           case 'maquina':
             await _sincronizarMaquina(op);
             break;
-          default:
-            debugPrint('Recurso desconhecido: ${op.recurso}');
-            continue;
-        }
-        // Marcar como sincronizado no banco
-        if (op.recurso == 'maquina') {
-          await dbHelper.marcarMaquinaComoSincronizada(op.recursoId);
         }
         await dbHelper.limparFilaSincronizacao(op.id!);
-        debugPrint('Operação ${op.recurso} ${op.operacao} ID: ${op.recursoId} sincronizada com sucesso');
         sucessos++;
       } catch (e) {
-        debugPrint('Erro ao sincronizar ${op.recurso} ${op.operacao} ID: ${op.recursoId}: $e');
         erros.add('Erro em ${op.recurso} ${op.operacao} ID: ${op.recursoId}: $e');
         falhas++;
       }
     }
-
     String mensagem = 'Sincronização concluída: $sucessos operação(ões) bem-sucedida(s), $falhas falha(s)';
     if (erros.isNotEmpty) {
       mensagem += '\nErros: ${erros.join('; ')}';
@@ -81,72 +63,85 @@ class SyncService {
   }
 
   Future<void> _sincronizarTipo(OperacaoSincronizacao op) async {
+    final dados = jsonDecode(op.dados);
+    final tipo = Tipo(id: op.recursoId, descricao: dados['descricao']);
     debugPrint('Sincronizando tipo: ${op.operacao} ID: ${op.recursoId}');
-    try {
-      final dados = jsonDecode(op.dados);
-      final tipo = Tipo.fromMap({
-        'id': op.recursoId,
-        'descricao': dados['descricao'] ?? '',
-      });
-      if (op.operacao == 'inserir') {
+    switch (op.operacao) {
+      case 'inserir':
         await networkService.criarTipo(tipo);
-      } else if (op.operacao == 'atualizar') {
+        break;
+      case 'atualizar':
         await networkService.atualizarTipo(tipo);
-      } else if (op.operacao == 'excluir') {
+        break;
+      case 'excluir':
         await networkService.excluirTipo(op.recursoId);
-      }
-    } catch (e) {
-      throw Exception('Erro ao sincronizar tipo: $e');
+        break;
     }
   }
 
   Future<void> _sincronizarMarca(OperacaoSincronizacao op) async {
+    final dados = jsonDecode(op.dados);
+    final marca = Marca(id: op.recursoId, nome: dados['nome']);
     debugPrint('Sincronizando marca: ${op.operacao} ID: ${op.recursoId}');
-    try {
-      final dados = jsonDecode(op.dados);
-      final marca = Marca.fromMap({
-        'id': op.recursoId,
-        'nome': dados['nome'] ?? '',
-      });
-      if (op.operacao == 'inserir') {
+    switch (op.operacao) {
+      case 'inserir':
         await networkService.criarMarca(marca);
-      } else if (op.operacao == 'atualizar') {
+        break;
+      case 'atualizar':
         await networkService.atualizarMarca(marca);
-      } else if (op.operacao == 'excluir') {
+        break;
+      case 'excluir':
         await networkService.excluirMarca(op.recursoId);
-      }
-    } catch (e) {
-      throw Exception('Erro ao sincronizar marca: $e');
+        break;
     }
   }
 
   Future<void> _sincronizarMaquina(OperacaoSincronizacao op) async {
+    final dados = jsonDecode(op.dados);
+    final maquina = Maquina(
+      id: op.recursoId,
+      idMarca: dados['idMarca'],
+      idTipo: dados['idTipo'],
+      anoFabricacao: dados['anoFabricacao'],
+      contatoProprietario: dados['contatoProprietario'],
+      dataInclusao: dados['dataInclusao'],
+      descricao: dados['descricao'],
+      nomeProprietario: dados['nomeProprietario'],
+      percentualComissao: dados['percentualComissao'].toDouble(),
+      status: dados['status'],
+      valor: dados['valor'].toDouble(),
+    );
     debugPrint('Sincronizando máquina: ${op.operacao} ID: ${op.recursoId}');
-    try {
-      final dados = jsonDecode(op.dados);
-      final maquina = Maquina.fromMap({
-        'id': op.recursoId,
-        'idMarca': dados['idMarca'] ?? 0,
-        'idTipo': dados['idTipo'] ?? 0,
-        'anoFabricacao': dados['anoFabricacao'] ?? 0,
-        'contatoProprietario': dados['contatoProprietario'] ?? '',
-        'dataInclusao': dados['dataInclusao'] ?? '',
-        'descricao': dados['descricao'] ?? '',
-        'nomeProprietario': dados['nomeProprietario'] ?? '',
-        'percentualComissao': dados['percentualComissao'] ?? 0.0,
-        'status': dados['status'] ?? 'D',
-        'valor': dados['valor'] ?? 0.0,
-        'isSincronizado': 0,
-      });
-      if (op.operacao == 'inserir') {
-        await networkService.criarMaquina(maquina);
-      } else if (op.operacao == 'atualizar') {
+    debugPrint('Dados da operação: ${op.dados}');
+    switch (op.operacao) {
+      case 'inserir':
+        final serverId = await networkService.criarMaquina(maquina);
+        if (serverId != null && serverId != op.recursoId) {
+          // Atualizar ID local com o ID do servidor
+          final db = await dbHelper.database;
+          await db.update(
+            'maquinas',
+            {'id': serverId},
+            where: 'id = ?',
+            whereArgs: [op.recursoId],
+          );
+          await db.update(
+            'fila_sincronizacao',
+            {'recursoId': serverId},
+            where: 'recursoId = ? AND recurso = ?',
+            whereArgs: [op.recursoId, 'maquina'],
+          );
+          debugPrint('ID local ${op.recursoId} atualizado para ID do servidor: $serverId');
+        }
+        await dbHelper.marcarMaquinaComoSincronizada(serverId ?? op.recursoId);
+        break;
+      case 'atualizar':
         await networkService.atualizarMaquina(maquina);
-      } else if (op.operacao == 'excluir') {
+        await dbHelper.marcarMaquinaComoSincronizada(op.recursoId);
+        break;
+      case 'excluir':
         await networkService.excluirMaquina(op.recursoId);
-      }
-    } catch (e) {
-      throw Exception('Erro ao sincronizar máquina: $e');
+        break;
     }
   }
 }

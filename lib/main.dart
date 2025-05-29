@@ -124,12 +124,18 @@ class _MaquinaListScreenState extends State<MaquinaListScreen> {
         }
         // Processar máquinas
         for (var maquina in maquinasApi) {
-          final existe = maquinasLocais.any((m) => m.id == maquina.id && m.isSincronizado);
-          if (!existe) {
-            debugPrint('Inserindo máquina ID: ${maquina.id}');
+          final existePorId = maquinasLocais.any((m) => m.id == maquina.id && m.isSincronizado);
+          final existePorDados = maquinasLocais.any((m) =>
+          m.descricao == maquina.descricao &&
+              m.dataInclusao == maquina.dataInclusao &&
+              m.idMarca == maquina.idMarca &&
+              m.idTipo == maquina.idTipo &&
+              m.isSincronizado);
+          if (!existePorId && !existePorDados) {
+            debugPrint('Inserindo máquina ID: ${maquina.id}, Descrição: ${maquina.descricao}');
             await txn.insert('maquinas', maquina.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
           } else {
-            debugPrint('Máquina ID: ${maquina.id} já sincronizada, pulando');
+            debugPrint('Máquina ID: ${maquina.id} ou dados já sincronizados, pulando');
           }
         }
       });
