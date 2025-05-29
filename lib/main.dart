@@ -1,6 +1,3 @@
-import 'package:disp_moveis_suf/models/Maquina.dart';
-import 'package:disp_moveis_suf/models/Marca.dart';
-import 'package:disp_moveis_suf/models/Tipo.dart';
 import 'package:disp_moveis_suf/services/database_helper.dart';
 import 'package:disp_moveis_suf/services/network_service.dart';
 import 'package:disp_moveis_suf/services/sync_service.dart';
@@ -9,16 +6,20 @@ import 'package:disp_moveis_suf/views/marca_list_screen.dart';
 import 'package:disp_moveis_suf/views/tipo_list_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:disp_moveis_suf/models/Maquina.dart';
+import 'package:disp_moveis_suf/models/Marca.dart';
+import 'package:disp_moveis_suf/models/OperacaoSincronizacao.dart';
+import 'package:disp_moveis_suf/models/Tipo.dart';
+import 'dart:convert';
+
 import 'package:sqflite/sqflite.dart';
-import 'package:uuid/uuid.dart';
-import 'package:http/http.dart' as http;
 
 void main() {
-  runApp(const MaquinaApp());
+  runApp(const MyApp());
 }
 
-class MaquinaApp extends StatelessWidget {
-  const MaquinaApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +37,7 @@ class MaquinaApp extends StatelessWidget {
 }
 
 class MaquinaListScreen extends StatefulWidget {
-  const MaquinaListScreen({super.key});
+  const MaquinaListScreen({Key? key}) : super(key: key);
 
   @override
   _MaquinaListScreenState createState() => _MaquinaListScreenState();
@@ -53,7 +54,51 @@ class _MaquinaListScreenState extends State<MaquinaListScreen> {
   @override
   void initState() {
     super.initState();
-    _carregarDados();
+    _inicializarDados();
+  }
+
+  Future<void> _inicializarDados() async {
+    await _limparDadosCorrompidos();
+    if (await syncService.estaOnline()) {
+      await _sincronizarTiposMarcas();
+    }
+    await _carregarDados();
+  }
+
+  Future<void> _limparDadosCorrompidos() async {
+    try {
+      final db = await dbHelper.database;
+      await db.transaction((txn) async {
+        await txn.delete('maquinas');
+        await txn.delete('tipos');
+        await txn.delete('marcas');
+        await txn.delete('fila_sincronizacao');
+      });
+      debugPrint('Dados corrompidos limpos: maquinas, tipos, marcas e fila_sincronizacao');
+    } catch (e) {
+      debugPrint('Erro ao limpar dados corrompidos: $e');
+    }
+  }
+
+  Future<void> _sincronizarTiposMarcas() async {
+    try {
+      final tiposApi = await networkService.buscarTipos();
+      final marcasApi = await networkService.buscarMarcas();
+      final db = await dbHelper.database;
+      await db.transaction((txn) async {
+        await txn.delete('tipos');
+        await txn.delete('marcas');
+        for (var tipo in tiposApi) {
+          await txn.insert('tipos', tipo.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+        }
+        for (var marca in marcasApi) {
+          await txn.insert('marcas', marca.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+        }
+      });
+      debugPrint('Tipos (${tiposApi.length}) e marcas (${marcasApi.length}) sincronizados');
+    } catch (e) {
+      debugPrint('Erro ao sincronizar tipos e marcas: $e');
+    }
   }
 
   Future<void> _carregarDados() async {
@@ -72,12 +117,12 @@ class _MaquinaListScreenState extends State<MaquinaListScreen> {
     final resultado = await syncService.sincronizarDados();
     await _carregarDados();
     if (mounted) {
-      final isError = resultado.contains('falha(s)');
+      final isError = resultado.contains('falha');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             resultado,
-            style: TextStyle(color: Colors.white),
+            style: const TextStyle(color: Colors.white),
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
           ),
@@ -90,56 +135,36 @@ class _MaquinaListScreenState extends State<MaquinaListScreen> {
 
   Future<void> _buscarDadosApi() async {
     if (!await syncService.estaOnline()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sem conexão com a internet')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sem conexão com a internet')),
+        );
+      }
       return;
     }
     try {
-      final testResponse = await http.get(Uri.parse('https://jsonplaceholder.typicode.com/posts/1'));
-      debugPrint('Teste de conexão: ${testResponse.statusCode}');
-
-      final tiposApi = await networkService.buscarTipos();
-      final marcasApi = await networkService.buscarMarcas();
+      await _sincronizarTiposMarcas();
       final maquinasApi = await networkService.buscarMaquinas();
-
-      final tiposLocais = await dbHelper.obterTipos();
-      final marcasLocais = await dbHelper.obterMarcas();
       final maquinasLocais = await dbHelper.obterMaquinas();
+
+      debugPrint('Máquinas locais antes da sincronização: ${maquinasLocais.map((m) => {'id': m.id, 'isSincronizado': m.isSincronizado, 'descricao': m.descricao}).toList()}');
+      debugPrint('Máquinas da API: ${maquinasApi.map((m) => {'id': m.id, 'descricao': m.descricao}).toList()}');
 
       final db = await dbHelper.database;
       await db.transaction((txn) async {
-        for (var tipo in tiposApi) {
-          final existe = tiposLocais.any((t) => t.id == tipo.id);
-          if (!existe) {
-            debugPrint('Inserindo tipo ID: ${tipo.id}');
-            await txn.insert('tipos', tipo.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
-          } else {
-            debugPrint('Tipo ID: ${tipo.id} já existe, pulando');
-          }
-        }
-        for (var marca in marcasApi) {
-          final existe = marcasLocais.any((m) => m.id == marca.id);
-          if (!existe) {
-            debugPrint('Inserindo marca ID: ${marca.id}');
-            await txn.insert('marcas', marca.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
-          } else {
-            debugPrint('Marca ID: ${marca.id} já existe, pulando');
-          }
-        }
         for (var maquina in maquinasApi) {
-          final existePorId = maquinasLocais.any((m) => m.id == maquina.id && m.isSincronizado);
-          final existePorDados = maquinasLocais.any((m) =>
-          m.descricao == maquina.descricao &&
-              m.dataInclusao == maquina.dataInclusao &&
-              m.idMarca == maquina.idMarca &&
-              m.idTipo == maquina.idTipo &&
-              m.isSincronizado);
-          if (!existePorId && !existePorDados) {
+          final existe = maquinasLocais.any((m) => m.id == maquina.id);
+          if (!existe) {
             debugPrint('Inserindo máquina ID: ${maquina.id}, Descrição: ${maquina.descricao}');
             await txn.insert('maquinas', maquina.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
           } else {
-            debugPrint('Máquina ID: ${maquina.id} ou dados já sincronizados, pulando');
+            debugPrint('Máquina ID: ${maquina.id} já existe localmente, atualizando');
+            await txn.update(
+              'maquinas',
+              {...maquina.toMap(), 'isSincronizado': 1},
+              where: 'id = ?',
+              whereArgs: [maquina.id],
+            );
           }
         }
       });
@@ -152,12 +177,8 @@ class _MaquinaListScreenState extends State<MaquinaListScreen> {
     } catch (e) {
       debugPrint('Erro ao buscar dados: $e');
       if (mounted) {
-        String mensagem = 'Erro ao buscar dados';
-        if (e.toString().contains('Erro de resolução de DNS')) {
-          mensagem = 'Falha ao conectar ao servidor. Verifique sua conexão.';
-        }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(mensagem)),
+          SnackBar(content: Text('Erro ao buscar dados: $e')),
         );
       }
     }
@@ -173,6 +194,18 @@ class _MaquinaListScreenState extends State<MaquinaListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Máquinas'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.cloud_download),
+            onPressed: _buscarDadosApi,
+            tooltip: 'Buscar Dados da API',
+          ),
+          IconButton(
+            icon: const Icon(Icons.sync),
+            onPressed: _sincronizarDados,
+            tooltip: 'Sincronizar Dados',
+          ),
+        ],
       ),
       drawer: Drawer(
         child: ListView(
@@ -206,22 +239,6 @@ class _MaquinaListScreenState extends State<MaquinaListScreen> {
                 Navigator.pushNamed(context, '/marcas');
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.cloud_download),
-              title: const Text('Buscar Dados da API'),
-              onTap: () {
-                Navigator.pop(context);
-                _buscarDadosApi();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.sync),
-              title: const Text('Sincronizar Dados'),
-              onTap: () {
-                Navigator.pop(context);
-                _sincronizarDados();
-              },
-            ),
           ],
         ),
       ),
@@ -241,7 +258,7 @@ class _MaquinaListScreenState extends State<MaquinaListScreen> {
                   Text('Marca: ${marca.nome}'),
                   Text('Tipo: ${tipo.descricao}'),
                   Text('Valor: R\$${maquina.valor.toStringAsFixed(2)}'),
-                  Text('Status: ${maquina.status}'),
+                  Text('Status: ${maquina.status == 'D' ? 'Disponível' : maquina.status == 'N' ? 'Em Negociação' : maquina.status == 'R' ? 'Reservada' : 'Vendida'}'),
                   if (!maquina.isSincronizado) const Text('Pendente de sincronização', style: TextStyle(color: Colors.red)),
                 ],
               ),

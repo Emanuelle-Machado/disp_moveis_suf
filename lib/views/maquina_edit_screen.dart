@@ -4,8 +4,6 @@ import 'package:disp_moveis_suf/models/Tipo.dart';
 import 'package:disp_moveis_suf/services/database_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:uuid/uuid.dart';
-
 
 class MaquinaEditScreen extends StatefulWidget {
   final Maquina? maquina;
@@ -19,69 +17,83 @@ class MaquinaEditScreen extends StatefulWidget {
 class _MaquinaEditScreenState extends State<MaquinaEditScreen> {
   final _formKey = GlobalKey<FormState>();
   final dbHelper = DatabaseHelper.instance;
-  late int idMarca;
-  late int idTipo;
-  late int anoFabricacao;
-  late String contatoProprietario;
-  late String dataInclusao;
-  late String descricao;
-  late String nomeProprietario;
-  late double percentualComissao;
-  late String status;
-  late double valor;
-  List<Tipo> tipos = [];
+  late TextEditingController _descricaoController;
+  late TextEditingController _nomeProprietarioController;
+  late TextEditingController _contatoProprietarioController;
+  late TextEditingController _anoFabricacaoController;
+  late TextEditingController _valorController;
+  late TextEditingController _percentualComissaoController;
+  String? _status;
+  int? _idMarca;
+  int? _idTipo;
   List<Marca> marcas = [];
+  List<Tipo> tipos = [];
 
   @override
   void initState() {
     super.initState();
-    idMarca = widget.maquina?.idMarca ?? 0;
-    idTipo = widget.maquina?.idTipo ?? 0;
-    anoFabricacao = widget.maquina?.anoFabricacao ?? DateTime.now().year;
-    contatoProprietario = widget.maquina?.contatoProprietario ?? '';
-    dataInclusao = widget.maquina?.dataInclusao ?? DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
-    descricao = widget.maquina?.descricao ?? '';
-    nomeProprietario = widget.maquina?.nomeProprietario ?? '';
-    percentualComissao = widget.maquina?.percentualComissao ?? 0.0;
-    status = widget.maquina?.status ?? 'D';
-    valor = widget.maquina?.valor ?? 0.0;
-    _carregarTiposEMarcas();
+    _descricaoController = TextEditingController(text: widget.maquina?.descricao ?? '');
+    _nomeProprietarioController = TextEditingController(text: widget.maquina?.nomeProprietario ?? '');
+    _contatoProprietarioController = TextEditingController(text: widget.maquina?.contatoProprietario ?? '');
+    _anoFabricacaoController = TextEditingController(text: widget.maquina?.anoFabricacao.toString() ?? '');
+    _valorController = TextEditingController(text: widget.maquina?.valor.toString() ?? '');
+    _percentualComissaoController = TextEditingController(text: widget.maquina?.percentualComissao.toString() ?? '');
+    _status = widget.maquina?.status ?? 'D';
+    _idMarca = widget.maquina?.idMarca;
+    _idTipo = widget.maquina?.idTipo;
+    _carregarDados();
   }
 
-  Future<void> _carregarTiposEMarcas() async {
-    final tiposCarregados = await dbHelper.obterTipos();
+  Future<void> _carregarDados() async {
     final marcasCarregadas = await dbHelper.obterMarcas();
+    final tiposCarregados = await dbHelper.obterTipos();
     setState(() {
-      tipos = tiposCarregados;
       marcas = marcasCarregadas;
-      if (idMarca == 0 && marcas.isNotEmpty) idMarca = marcas.first.id;
-      if (idTipo == 0 && tipos.isNotEmpty) idTipo = tipos.first.id;
+      tipos = tiposCarregados;
+      if (_idMarca == null && marcas.isNotEmpty) _idMarca = marcas.first.id;
+      if (_idTipo == null && tipos.isNotEmpty) _idTipo = tipos.first.id;
     });
   }
 
   Future<void> _salvarMaquina() async {
     if (_formKey.currentState!.validate()) {
-      _formKey.currentState!.save();
+      final db = await dbHelper.database;
+      final id = widget.maquina?.id ?? (await db.rawQuery('SELECT COALESCE(MAX(id), 0) + 1 as nextId FROM maquinas')).first['nextId'] as int;
       final maquina = Maquina(
-        id: widget.maquina?.id ?? int.parse(const Uuid().v4().replaceAll('-', '').substring(0, 8), radix: 16),
-        idMarca: idMarca,
-        idTipo: idTipo,
-        anoFabricacao: anoFabricacao,
-        contatoProprietario: contatoProprietario,
-        dataInclusao: dataInclusao,
-        descricao: descricao,
-        nomeProprietario: nomeProprietario,
-        percentualComissao: percentualComissao,
-        status: status,
-        valor: valor,
+        id: id,
+        idMarca: _idMarca!,
+        idTipo: _idTipo!,
+        anoFabricacao: int.parse(_anoFabricacaoController.text),
+        contatoProprietario: _contatoProprietarioController.text,
+        dataInclusao: widget.maquina?.dataInclusao ?? DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now()),
+        descricao: _descricaoController.text,
+        nomeProprietario: _nomeProprietarioController.text,
+        percentualComissao: double.parse(_percentualComissaoController.text),
+        status: _status!,
+        valor: double.parse(_valorController.text),
       );
+
       if (widget.maquina == null) {
         await dbHelper.inserirMaquina(maquina);
       } else {
         await dbHelper.atualizarMaquina(maquina);
       }
-      if (mounted) Navigator.pop(context);
+
+      if (mounted) {
+        Navigator.pop(context);
+      }
     }
+  }
+
+  @override
+  void dispose() {
+    _descricaoController.dispose();
+    _nomeProprietarioController.dispose();
+    _contatoProprietarioController.dispose();
+    _anoFabricacaoController.dispose();
+    _valorController.dispose();
+    _percentualComissaoController.dispose();
+    super.dispose();
   }
 
   @override
@@ -97,20 +109,13 @@ class _MaquinaEditScreenState extends State<MaquinaEditScreen> {
           child: SingleChildScrollView(
             child: Column(
               children: [
-                DropdownButtonFormField<int>(
-                  value: idTipo,
-                  decoration: const InputDecoration(labelText: 'Tipo'),
-                  items: tipos.map((tipo) {
-                    return DropdownMenuItem(
-                      value: tipo.id,
-                      child: Text(tipo.descricao),
-                    );
-                  }).toList(),
-                  onChanged: (value) => setState(() => idTipo = value!),
-                  validator: (value) => value == null ? 'Selecione um tipo' : null,
+                TextFormField(
+                  controller: _descricaoController,
+                  decoration: const InputDecoration(labelText: 'Descrição'),
+                  validator: (value) => value!.isEmpty ? 'Informe a descrição' : null,
                 ),
                 DropdownButtonFormField<int>(
-                  value: idMarca,
+                  value: _idMarca,
                   decoration: const InputDecoration(labelText: 'Marca'),
                   items: marcas.map((marca) {
                     return DropdownMenuItem(
@@ -118,85 +123,72 @@ class _MaquinaEditScreenState extends State<MaquinaEditScreen> {
                       child: Text(marca.nome),
                     );
                   }).toList(),
-                  onChanged: (value) => setState(() => idMarca = value!),
-                  validator: (value) => value == null ? 'Selecione uma marca' : null,
+                  onChanged: (value) => setState(() => _idMarca = value),
+                  validator: (value) => value == null ? 'Selecione a marca' : null,
+                ),
+                DropdownButtonFormField<int>(
+                  value: _idTipo,
+                  decoration: const InputDecoration(labelText: 'Tipo'),
+                  items: tipos.map((tipo) {
+                    return DropdownMenuItem(
+                      value: tipo.id,
+                      child: Text(tipo.descricao),
+                    );
+                  }).toList(),
+                  onChanged: (value) => setState(() => _idTipo = value),
+                  validator: (value) => value == null ? 'Selecione o tipo' : null,
                 ),
                 TextFormField(
-                  initialValue: descricao,
-                  decoration: const InputDecoration(labelText: 'Descrição'),
-                  validator: (value) => value!.isEmpty ? 'Descrição é obrigatória' : null,
-                  onSaved: (value) => descricao = value!,
-                ),
-                TextFormField(
-                  initialValue: anoFabricacao.toString(),
+                  controller: _anoFabricacaoController,
                   decoration: const InputDecoration(labelText: 'Ano de Fabricação'),
                   keyboardType: TextInputType.number,
                   validator: (value) {
-                    if (value!.isEmpty) return 'Ano é obrigatório';
-                    final ano = int.tryParse(value);
-                    if (ano == null || ano < 1900 || ano > DateTime.now().year) {
-                      return 'Ano inválido';
-                    }
+                    if (value!.isEmpty) return 'Informe o ano';
+                    if (int.tryParse(value) == null) return 'Ano inválido';
                     return null;
                   },
-                  onSaved: (value) => anoFabricacao = int.parse(value!),
                 ),
                 TextFormField(
-                  initialValue: contatoProprietario,
-                  decoration: const InputDecoration(labelText: 'Contato do Proprietário'),
-                  validator: (value) => value!.isEmpty ? 'Contato é obrigatório' : null,
-                  onSaved: (value) => contatoProprietario = value!,
-                ),
-                TextFormField(
-                  initialValue: dataInclusao,
-                  decoration: const InputDecoration(labelText: 'Data de Inclusão (yyyy-MM-dd HH:mm)'),
-                  validator: (value) {
-                    try {
-                      DateFormat('yyyy-MM-dd HH:mm').parse(value!);
-                      return null;
-                    } catch (e) {
-                      return 'Data inválida (use yyyy-MM-dd HH:mm)';
-                    }
-                  },
-                  onSaved: (value) => dataInclusao = value!,
-                ),
-                TextFormField(
-                  initialValue: nomeProprietario,
+                  controller: _nomeProprietarioController,
                   decoration: const InputDecoration(labelText: 'Nome do Proprietário'),
-                  validator: (value) => value!.isEmpty ? 'Nome é obrigatório' : null,
-                  onSaved: (value) => nomeProprietario = value!,
+                  validator: (value) => value!.isEmpty ? 'Informe o nome' : null,
                 ),
                 TextFormField(
-                  initialValue: percentualComissao.toString(),
-                  decoration: const InputDecoration(labelText: 'Percentual de Comissão'),
-                  keyboardType: TextInputType.number,
-                  validator: (value) {
-                    final percentual = double.tryParse(value!);
-                    if (percentual == null || percentual < 0) return 'Percentual inválido';
-                    return null;
-                  },
-                  onSaved: (value) => percentualComissao = double.parse(value!),
+                  controller: _contatoProprietarioController,
+                  decoration: const InputDecoration(labelText: 'Contato do Proprietário'),
+                  validator: (value) => value!.isEmpty ? 'Informe o contato' : null,
                 ),
                 TextFormField(
-                  initialValue: valor.toString(),
+                  controller: _valorController,
                   decoration: const InputDecoration(labelText: 'Valor'),
-                  keyboardType: TextInputType.number,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   validator: (value) {
-                    final val = double.tryParse(value!);
-                    if (val == null || val < 0) return 'Valor inválido';
+                    if (value!.isEmpty) return 'Informe o valor';
+                    if (double.tryParse(value) == null) return 'Valor inválido';
                     return null;
                   },
-                  onSaved: (value) => valor = double.parse(value!),
+                ),
+                TextFormField(
+                  controller: _percentualComissaoController,
+                  decoration: const InputDecoration(labelText: 'Percentual de Comissão'),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  validator: (value) {
+                    if (value!.isEmpty) return 'Informe o percentual';
+                    if (double.tryParse(value) == null) return 'Percentual inválido';
+                    return null;
+                  },
                 ),
                 DropdownButtonFormField<String>(
-                  value: status,
+                  value: _status,
                   decoration: const InputDecoration(labelText: 'Status'),
                   items: const [
                     DropdownMenuItem(value: 'D', child: Text('Disponível')),
-                    DropdownMenuItem(value: 'I', child: Text('Indisponível')),
+                    DropdownMenuItem(value: 'N', child: Text('Em Negociação')),
+                    DropdownMenuItem(value: 'R', child: Text('Reservada')),
+                    DropdownMenuItem(value: 'V', child: Text('Vendida')),
                   ],
-                  onChanged: (value) => setState(() => status = value!),
-                  validator: (value) => value == null ? 'Selecione um status' : null,
+                  onChanged: (value) => setState(() => _status = value),
+                  validator: (value) => value == null ? 'Selecione o status' : null,
                 ),
                 const SizedBox(height: 20),
                 ElevatedButton(

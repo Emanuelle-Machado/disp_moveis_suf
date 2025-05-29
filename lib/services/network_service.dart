@@ -1,8 +1,8 @@
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:disp_moveis_suf/models/Maquina.dart';
 import 'package:disp_moveis_suf/models/Marca.dart';
 import 'package:disp_moveis_suf/models/Tipo.dart';
-import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 
 class NetworkService {
@@ -19,6 +19,7 @@ class NetworkService {
         const Duration(seconds: 10),
         onTimeout: () => throw Exception('Tempo limite excedido ao buscar tipos'),
       );
+      debugPrint('Resposta buscarTipos: Status ${response.statusCode}, Body: ${response.body}');
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         return data.map((json) => Tipo.fromMap(json)).toList();
@@ -26,14 +27,22 @@ class NetworkService {
       throw Exception('Falha ao buscar tipos: ${response.statusCode}');
     } catch (e) {
       debugPrint('Erro ao buscar tipos: $e');
-      if (e.toString().contains('Failed host lookup')) {
-        throw Exception('Erro de resolução de DNS: verifique a conexão ou o servidor');
-      }
       throw Exception('Erro ao buscar tipos: $e');
     }
   }
 
-  Future<void> criarTipo(Tipo tipo) async {
+  Future<int?> obterIdTipoPorDescricao(String descricao) async {
+    try {
+      final tipos = await buscarTipos();
+      final tipo = tipos.firstWhere((t) => t.descricao == descricao, orElse: () => Tipo(id: 0, descricao: ''));
+      return tipo.id != 0 ? tipo.id : null;
+    } catch (e) {
+      debugPrint('Erro ao buscar ID do tipo por descrição "$descricao": $e');
+      return null;
+    }
+  }
+
+  Future<int?> criarTipo(Tipo tipo) async {
     try {
       final uri = Uri.parse('$baseUrl/tipo');
       debugPrint('Criando tipo em: $uri, dados: ${jsonEncode(tipo.toApiMap())}');
@@ -42,9 +51,18 @@ class NetworkService {
         headers: _headers,
         body: jsonEncode(tipo.toApiMap()),
       );
-      if (response.statusCode != 201 && response.statusCode != 204) {
-        throw Exception('Falha ao criar tipo: ${response.statusCode}');
+      debugPrint('Resposta criarTipo: Status ${response.statusCode}, Body: ${response.body}');
+      if (response.statusCode == 201 || response.statusCode == 204) {
+        if (response.statusCode == 201 && response.body.isNotEmpty) {
+          final data = jsonDecode(response.body);
+          final serverId = data['id'] as int?;
+          debugPrint('Tipo criado com ID do servidor: $serverId');
+          return serverId;
+        }
+        // Para 204, buscar o ID pelo nome
+        return await obterIdTipoPorDescricao(tipo.descricao);
       }
+      throw Exception('Falha ao criar tipo: ${response.statusCode}');
     } catch (e) {
       debugPrint('Erro ao criar tipo: $e');
       throw Exception('Erro ao criar tipo: $e');
@@ -60,6 +78,7 @@ class NetworkService {
         headers: _headers,
         body: jsonEncode(tipo.toApiMap()),
       );
+      debugPrint('Resposta atualizarTipo: Status ${response.statusCode}, Body: ${response.body}');
       if (response.statusCode != 200 && response.statusCode != 204) {
         throw Exception('Falha ao atualizar tipo: ${response.statusCode}');
       }
@@ -74,7 +93,7 @@ class NetworkService {
       final uri = Uri.parse('$baseUrl/tipo/$id');
       debugPrint('Excluindo tipo em: $uri');
       final response = await http.delete(uri, headers: _headers);
-      debugPrint('Resposta da exclusão de tipo ID $id: ${response.statusCode}');
+      debugPrint('Resposta excluirTipo: Status ${response.statusCode}, Body: ${response.body}');
       if (response.statusCode != 200 && response.statusCode != 204 && response.statusCode != 404) {
         throw Exception('Falha ao excluir tipo: ${response.statusCode}');
       }
@@ -93,6 +112,7 @@ class NetworkService {
         const Duration(seconds: 10),
         onTimeout: () => throw Exception('Tempo limite excedido ao buscar marcas'),
       );
+      debugPrint('Resposta buscarMarcas: Status ${response.statusCode}, Body: ${response.body}');
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         return data.map((json) => Marca.fromMap(json)).toList();
@@ -100,14 +120,22 @@ class NetworkService {
       throw Exception('Falha ao buscar marcas: ${response.statusCode}');
     } catch (e) {
       debugPrint('Erro ao buscar marcas: $e');
-      if (e.toString().contains('Failed host lookup')) {
-        throw Exception('Erro de resolução de DNS: verifique a conexão ou o servidor');
-      }
       throw Exception('Erro ao buscar marcas: $e');
     }
   }
 
-  Future<void> criarMarca(Marca marca) async {
+  Future<int?> obterIdMarcaPorNome(String nome) async {
+    try {
+      final marcas = await buscarMarcas();
+      final marca = marcas.firstWhere((m) => m.nome == nome, orElse: () => Marca(id: 0, nome: ''));
+      return marca.id != 0 ? marca.id : null;
+    } catch (e) {
+      debugPrint('Erro ao buscar ID da marca por nome "$nome": $e');
+      return null;
+    }
+  }
+
+  Future<int?> criarMarca(Marca marca) async {
     try {
       final uri = Uri.parse('$baseUrl/marca');
       debugPrint('Criando marca em: $uri, dados: ${jsonEncode(marca.toApiMap())}');
@@ -116,9 +144,18 @@ class NetworkService {
         headers: _headers,
         body: jsonEncode(marca.toApiMap()),
       );
-      if (response.statusCode != 201 && response.statusCode != 204) {
-        throw Exception('Falha ao criar marca: ${response.statusCode}');
+      debugPrint('Resposta criarMarca: Status ${response.statusCode}, Body: ${response.body}');
+      if (response.statusCode == 201 || response.statusCode == 204) {
+        if (response.statusCode == 201 && response.body.isNotEmpty) {
+          final data = jsonDecode(response.body);
+          final serverId = data['id'] as int?;
+          debugPrint('Marca criada com ID do servidor: $serverId');
+          return serverId;
+        }
+        // Para 204, buscar o ID pelo nome
+        return await obterIdMarcaPorNome(marca.nome);
       }
+      throw Exception('Falha ao criar marca: ${response.statusCode}');
     } catch (e) {
       debugPrint('Erro ao criar marca: $e');
       throw Exception('Erro ao criar marca: $e');
@@ -134,6 +171,7 @@ class NetworkService {
         headers: _headers,
         body: jsonEncode(marca.toApiMap()),
       );
+      debugPrint('Resposta atualizarMarca: Status ${response.statusCode}, Body: ${response.body}');
       if (response.statusCode != 200 && response.statusCode != 204) {
         throw Exception('Falha ao atualizar marca: ${response.statusCode}');
       }
@@ -148,7 +186,7 @@ class NetworkService {
       final uri = Uri.parse('$baseUrl/marca/$id');
       debugPrint('Excluindo marca em: $uri');
       final response = await http.delete(uri, headers: _headers);
-      debugPrint('Resposta da exclusão de marca ID $id: ${response.statusCode}');
+      debugPrint('Resposta excluirMarca: Status ${response.statusCode}, Body: ${response.body}');
       if (response.statusCode != 200 && response.statusCode != 204 && response.statusCode != 404) {
         throw Exception('Falha ao excluir marca: ${response.statusCode}');
       }
@@ -180,6 +218,7 @@ class NetworkService {
         const Duration(seconds: 10),
         onTimeout: () => throw Exception('Tempo limite excedido ao buscar máquinas'),
       );
+      debugPrint('Resposta buscarMaquinas: Status ${response.statusCode}, Body: ${response.body}');
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         return data.map((json) => Maquina.fromMap({...json, 'isSincronizado': 1})).toList();
@@ -187,9 +226,6 @@ class NetworkService {
       throw Exception('Falha ao buscar máquinas: ${response.statusCode}');
     } catch (e) {
       debugPrint('Erro ao buscar máquinas: $e');
-      if (e.toString().contains('Failed host lookup')) {
-        throw Exception('Erro de resolução de DNS: verifique a conexão ou o servidor');
-      }
       throw Exception('Erro ao buscar máquinas: $e');
     }
   }
@@ -203,16 +239,13 @@ class NetworkService {
         headers: _headers,
         body: jsonEncode(maquina.toApiMap()),
       );
+      debugPrint('Resposta criarMaquina: Status ${response.statusCode}, Body: ${response.body}');
       if (response.statusCode == 201 || response.statusCode == 204) {
         if (response.statusCode == 201 && response.body.isNotEmpty) {
-          try {
-            final data = jsonDecode(response.body);
-            final serverId = data['id'] as int?;
-            debugPrint('Máquina criada com ID do servidor: $serverId');
-            return serverId;
-          } catch (e) {
-            debugPrint('Não foi possível extrair ID da resposta: $e');
-          }
+          final data = jsonDecode(response.body);
+          final serverId = data['id'] as int?;
+          debugPrint('Máquina criada com ID do servidor: $serverId');
+          return serverId;
         }
         return null;
       }
@@ -223,7 +256,7 @@ class NetworkService {
     }
   }
 
-  Future<void> atualizarMaquina(Maquina maquina) async {
+  Future<int?> atualizarMaquina(Maquina maquina) async {
     try {
       final uri = Uri.parse('$baseUrl/maquina/${maquina.id}');
       debugPrint('Atualizando máquina em: $uri, dados: ${jsonEncode(maquina.toApiMap())}');
@@ -232,9 +265,17 @@ class NetworkService {
         headers: _headers,
         body: jsonEncode(maquina.toApiMap()),
       );
-      if (response.statusCode != 200 && response.statusCode != 204) {
-        throw Exception('Falha ao atualizar máquina: ${response.statusCode}');
+      debugPrint('Resposta atualizarMaquina: Status ${response.statusCode}, Body: ${response.body}');
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        if (response.body.isNotEmpty) {
+          final data = jsonDecode(response.body);
+          final serverId = data['id'] as int?;
+          debugPrint('Máquina atualizada com ID do servidor: $serverId');
+          return serverId;
+        }
+        return maquina.id;
       }
+      throw Exception('Falha ao atualizar máquina: ${response.statusCode}');
     } catch (e) {
       debugPrint('Erro ao atualizar máquina: $e');
       throw Exception('Erro ao atualizar máquina: $e');
@@ -246,7 +287,7 @@ class NetworkService {
       final uri = Uri.parse('$baseUrl/maquina/$id');
       debugPrint('Excluindo máquina em: $uri');
       final response = await http.delete(uri, headers: _headers);
-      debugPrint('Resposta da exclusão de máquina ID $id: ${response.statusCode}');
+      debugPrint('Resposta excluirMaquina: Status ${response.statusCode}, Body: ${response.body}');
       if (response.statusCode != 200 && response.statusCode != 204 && response.statusCode != 404) {
         throw Exception('Falha ao excluir máquina: ${response.statusCode}');
       }

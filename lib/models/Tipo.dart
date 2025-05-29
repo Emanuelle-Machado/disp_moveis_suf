@@ -5,13 +5,13 @@ class Tipo {
   Tipo({required this.id, required this.descricao});
 
   Map<String, dynamic> toMap() {
-    return {'id': id, 'descricao': descricao};
+    return {
+      'id': id,
+      'descricao': descricao,
+    };
   }
 
   factory Tipo.fromMap(Map<String, dynamic> map) {
-    if (map['id'] == null || map['descricao'] == null) {
-      throw Exception('Dados inválidos para Tipo: id ou descricao nulos');
-    }
     return Tipo(
       id: map['id'] as int,
       descricao: map['descricao'] as String,
@@ -19,6 +19,8 @@ class Tipo {
   }
 
   Map<String, dynamic> toApiMap() {
-    return {'descricao': descricao};
+    return {
+      'descricao': descricao,
+    };
   }
 }
