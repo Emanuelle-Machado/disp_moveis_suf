@@ -1,36 +1,26 @@
 class Marca {
-  int id;
-  String nome;
+  final int id;
+  final String nome;
 
-  Marca(this.id, this.nome);
-
-  Marca copyWith({int? id, String? nome}) {
-    return Marca(id ?? this.id, nome ?? this.nome);
-  }
+  Marca({required this.id, required this.nome});
 
   Map<String, dynamic> toMap() {
-    return <String, dynamic>{'id': id, 'nome': nome};
+    return {
+      'id': id,
+      'nome': nome,
+    };
   }
 
   factory Marca.fromMap(Map<String, dynamic> map) {
-    return Marca(map['id'] as int, map['nome'] as String);
-  }
-  factory Marca.fromJson(Map<String, dynamic> json) {
-    return Marca(json['id'] as int, json['nome'] as String);
-  }
-
-  Map<String, dynamic> toJson() => {'nome': nome};
-
-  @override
-  String toString() => 'Marca(id: $id, nome: $nome)';
-
-  @override
-  bool operator ==(covariant Marca other) {
-    if (identical(this, other)) return true;
-
-    return other.id == id && other.nome == nome;
+    return Marca(
+      id: map['id'] as int,
+      nome: map['nome'] as String,
+    );
   }
 
-  @override
-  int get hashCode => id.hashCode ^ nome.hashCode;
+  Map<String, dynamic> toApiMap() {
+    return {
+      'nome': nome,
+    };
+  }
 }
