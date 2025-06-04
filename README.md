@@ -32,22 +32,16 @@ urlBase: https://argo.td.utfpr.edu.br/maquinas/ws
 | Método | Endpoint                                     | Descrição                                                                |
 |--------|----------------------------------------------|--------------------------------------------------------------------------|
 | GET    | `maquina`                                    | Retorna todas as máquinas                                                |
-| GET    | `tipo`                                       | Retorna todos os tipos de animais                                        |
-| GET    | `raca`                                       | Retorna todas as raças                                                   |
-| GET    | `cidade`                                     | Retorna todas as cidades                                                 |
-| GET    | `animal/{id}`                                | Retorna um animal específico pelo ID                                     |
+| GET    | `tipo`                                       | Retorna todos os tipos de máquinas                                       |
+| GET    | `marca`                                      | Retorna todas as raças                                                   |
+| GET    | `cidade`                                     | Retorna todas as marcas                                                  |
+| GET    | `animal/{id}`                                | Retorna uma máquina específico pelo ID                                   |
 | GET    | `tipo/{id}`                                  | Retorna um tipo específico pelo ID                                       |
-| GET    | `raca/{id}`                                  | Retorna uma raça específica pelo ID                                      |
-| GET    | `cidade/{id}`                                | Retorna uma cidade específica pelo ID                                    |
-
-## Melhorias
-
-Foi feita uma refatoração para que a busca o preenchimento dos spinners fosse feito por meio de Intent services, que buscam direto na web service todos os itens e os inserem no spinner.
-
+| GET    | `marca/{id}`                                 | Retorna uma marca específica pelo ID                                     |
 
 ## Aprendizados
 
-Neste projeto aprendi mais sobre o uso de services em aplicativos mobile para melhorar a performance e realizar tarefas em segundo plano. Além de aprender a realizar a conexão com o web service nesse aplicativo.
+Neste projeto aprendi mais sobre o uso de flutter e dart em aplicativos mobile para melhorar. Além de aprender a realizar a conexão com o web service.
 
 
 ## Screenshots
