@@ -21,17 +21,17 @@ O principal objetivo é possibilitar o usuário de ver e cadastrar máquinas que
 
 ## Stack utilizada
 
-**Front-end:** PHP, TailwindCSS, Blade
+**Front-end:** Flutter
 
-**Back-end:** Node, Laravel, PHP
+**Back-end:** Dart
 
 
 ## 📑 Endpoints da API
-urlBase: https://argo.td.utfpr.edu.br/pets/ws/
+urlBase: https://argo.td.utfpr.edu.br/maquinas/ws
 
 | Método | Endpoint                                     | Descrição                                                                |
 |--------|----------------------------------------------|--------------------------------------------------------------------------|
-| GET    | `animal`                                     | Retorna todos os animais                                                 |
+| GET    | `maquina`                                    | Retorna todas as máquinas                                                |
 | GET    | `tipo`                                       | Retorna todos os tipos de animais                                        |
 | GET    | `raca`                                       | Retorna todas as raças                                                   |
 | GET    | `cidade`                                     | Retorna todas as cidades                                                 |
