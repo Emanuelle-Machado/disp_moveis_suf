@@ -42,27 +42,3 @@ urlBase: https://argo.td.utfpr.edu.br/maquinas/ws
 ## Aprendizados
 
 Neste projeto aprendi mais sobre o uso de flutter e dart em aplicativos mobile para melhorar. Além de aprender a realizar a conexão com o web service.
-
-
-## Screenshots
-
-<h3 align="center">Página inicial</h3>
-<p align="center">
-  <img src="https://github.com/Emanuelle-Machado/AdotarPets/blob/master/app/src/main/assets/imglimpa.jpeg" alt="Página inicial" width="200"/>
-  <img src="https://github.com/Emanuelle-Machado/AdotarPets/blob/master/app/src/main/assets/imgpreenchida.jpeg" alt="Listagem de animais" width="200"/>
-  
-</p>
-
-<h3 align="center">Cadastros</h3>
-<p align="center">
-  <img src="https://github.com/Emanuelle-Machado/AdotarPets/blob/master/app/src/main/assets/animais.jpeg" alt="Cadastro de Animais" width="200"/>
-  <img src="https://github.com/Emanuelle-Machado/AdotarPets/blob/master/app/src/main/assets/cidade.jpeg" alt="Dialogo de cadastro de cidade" width="200"/>
-  <img src="https://github.com/Emanuelle-Machado/AdotarPets/blob/master/app/src/main/assets/raca.jpeg" alt="Dialogo de cadastro de raças" width="200"/>
-  <img src="https://github.com/Emanuelle-Machado/AdotarPets/blob/master/app/src/main/assets/tipo.jpeg" alt="Dialogo de cadastro de tipos" width="200"/>
-</p>
-
-<h3 align="center">Todas as telas tem sua versão horizontal</h3>
-<p align="center">
-  <img src="https://github.com/Emanuelle-Machado/AdotarPets/blob/master/app/src/main/assets/horizontal.jpeg" alt="Imagem na horizontal" height="200"/>
-</p>
-
