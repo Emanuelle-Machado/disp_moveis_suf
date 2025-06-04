@@ -1,12 +1,9 @@
 
 # Inventário de máquinas agricolas
 
-Este projeto é um estudo da máteria de aplicaticos móveis, ele tem como objetivo usar de um web service para pegar informações e cadastrar elas, usando de intent services para realizar elas em segundo plano e melhorar sua performance.
+Este projeto é um estudo da máteria de aplicaticos móveis 2, ele tem como objetivo usar da linguagem flutter para desenvolver um aplicativo que conecte-se a um web service para pegar informações e cadastrar elas.
 
-O principal objetivo é possibilitar o usuário de ver animais para adoção e cadastrar animais disponiveis para a doação. 
-É possível também que o usuário cadastre-se como alguem interessado a adotar um tipo de animal, assim é possivel a pessoa com um animal pra adoção entrar em contato.
-
-
+O principal objetivo é possibilitar o usuário de ver e cadastrar máquinas que possuem tipo e marca. No aplicativo, tem a opção de buscar os dados do web service e armazenar eles no banco de dados local, quando o aplicativo está offline, é possível gerar cadastros e edições e sincronizar com o web service depois quando houver uma conexão, tendo as mudanças salvas no banco local até a sincronização acontecer.
 
 ## Autores
 
@@ -15,11 +12,11 @@ O principal objetivo é possibilitar o usuário de ver animais para adoção e c
 
 ## Funcionalidades
 
-- Listar animais do web service
-- Filtrar e buscar animais
-- Cadastrar animais no web service
-- Cadastrar cidade, tipo e raça no web service
-- Layout vertical e horizontal
+- Listar máquinas do web service
+- Filtrar e buscar máquinas
+- Cadastrar máquinas no web service
+- Cadastrar tipo e marca no web service
+- Layout vertical e horizontal, com possibilidade de rodar em outros dispositivos.
 
 
 ## Stack utilizada
