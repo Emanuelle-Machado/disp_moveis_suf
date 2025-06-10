@@ -34,9 +34,22 @@ urlBase: https://argo.td.utfpr.edu.br/maquinas/ws
 | GET    | `maquina`                                    | Retorna todas as máquinas                                                |
 | GET    | `tipo`                                       | Retorna todos os tipos de máquinas                                       |
 | GET    | `marca`                                      | Retorna todas as marcas                                                  |
+|--------|----------------------------------------------|--------------------------------------------------------------------------|
 | GET    | `maquina/{id}`                               | Retorna uma máquina específico pelo ID                                   |
 | GET    | `tipo/{id}`                                  | Retorna um tipo específico pelo ID                                       |
 | GET    | `marca/{id}`                                 | Retorna uma marca específica pelo ID                                     |
+|--------|----------------------------------------------|--------------------------------------------------------------------------|
+| POST   | `maquina`                                    | Cadastra uma máquina                                                     |
+| POST   | `tipo`                                       | Cadastra um tipo                                                         |
+| POST   | `marca`                                      | Cadastra uma marca                                                       |
+|--------|----------------------------------------------|--------------------------------------------------------------------------|
+| PUT    | `maquina/{id}`                               | Altera uma máquina específico pelo ID                                    |
+| PUT    | `tipo/{id}`                                  | Altera um tipo específico pelo ID                                        |
+| PUT    | `marca/{id}`                                 | Altera uma marca específica pelo ID                                      |
+|--------|----------------------------------------------|--------------------------------------------------------------------------|
+| DELETE | `maquina/{id}`                               | Deleta uma máquina específico pelo ID                                    |
+| DELETE | `tipo/{id}`                                  | Deleta um tipo específico pelo ID                                        |
+| DELETE | `marca/{id}`                                 | Deleta uma marca específica pelo ID                                      |
 
 ## Aprendizados
 
