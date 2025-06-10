@@ -34,7 +34,7 @@ urlBase: https://argo.td.utfpr.edu.br/maquinas/ws
 | GET    | `maquina`                                    | Retorna todas as máquinas                                                |
 | GET    | `tipo`                                       | Retorna todos os tipos de máquinas                                       |
 | GET    | `marca`                                      | Retorna todas as marcas                                                  |
-| GET    | `animal/{id}`                                | Retorna uma máquina específico pelo ID                                   |
+| GET    | `maquina/{id}`                               | Retorna uma máquina específico pelo ID                                   |
 | GET    | `tipo/{id}`                                  | Retorna um tipo específico pelo ID                                       |
 | GET    | `marca/{id}`                                 | Retorna uma marca específica pelo ID                                     |
 
